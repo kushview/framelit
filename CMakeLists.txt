@@ -11,12 +11,13 @@ set(CMAKE_AUTOUIC ON)
 set(QT_DEFAULT_MAJOR_VERSION 6)
 list(PREPEND CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.11.0/macos")
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Multimedia MultimediaWidgets OpenGL OpenGLWidgets Test)
 
 set(SOURCES
     src/main.cpp
     src/appcontroller.cpp
     src/recorderworker.cpp
+    src/capture/screencaptureworker.cpp
     src/ui/capturewindow.cpp
     src/ui/controlbar.cpp
 )
@@ -24,6 +25,7 @@ set(SOURCES
 set(HEADERS
     src/appcontroller.hpp
     src/recorderworker.hpp
+    src/capture/screencaptureworker.hpp
     src/ui/capturewindow.hpp
     src/ui/controlbar.hpp
 )
@@ -39,6 +41,10 @@ target_link_libraries(screen-capture-qt PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
+    Qt6::OpenGL
+    Qt6::OpenGLWidgets
 )
 
 # macOS bundle settings

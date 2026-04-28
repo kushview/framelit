@@ -1,10 +1,14 @@
 #include "appcontroller.hpp"
 #include "recorderworker.hpp"
+#include "capture/screencaptureworker.hpp"
 #include "ui/capturewindow.hpp"
 #include "ui/controlbar.hpp"
 
+#include <QDir>
 #include <QGuiApplication>
+#include <QMessageBox>
 #include <QScreen>
+#include <QStandardPaths>
 #include <QThread>
 
 namespace sc {
@@ -68,7 +72,22 @@ void AppController::onStartRequested()
 {
     if (m_state != AppState::Idle)
         return;
+
+    auto* worker = new ScreenCaptureWorker(m_region, m_settings);
+    attachWorker(worker);
+
+    // Prototype (Milestone 3): save first frame as PNG, then stop.
+    // SingleShotConnection auto-disconnects after the first delivery so
+    // subsequent queued frameReady events don't use m_worker after deletion.
+    connect(worker, &RecorderWorker::frameReady,
+            this,   &AppController::onFirstFrameReceived,
+            static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
+    connect(worker, &RecorderWorker::errorOccurred,
+            this,   &AppController::onCaptureError,
+            Qt::QueuedConnection);
+
     setState(AppState::Recording);
+    QMetaObject::invokeMethod(m_worker, "start", Qt::QueuedConnection);
 }
 
 void AppController::onStopRequested()
@@ -117,13 +136,40 @@ void AppController::onRegionChanged(const QRect& rect)
 void AppController::onRecordingFinished()
 {
     setState(AppState::Processing);
-    // TODO: hand frames to encoder worker
+    // TODO (Milestone 5): hand FrameStore to GifEncoder worker
     setState(AppState::Idle);
 }
 
 void AppController::onProgressUpdated(qint64 elapsedMs)
 {
     emit recordingProgress(elapsedMs);
+}
+
+void AppController::onFirstFrameReceived(const QImage& frame)
+{
+    // Milestone 3 prototype: save one PNG and stop recording.
+    // This connection is disconnected once Milestone 4 (FrameStore) is wired up.
+    const QString dir  = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+    const QString path = dir + "/screen-capture-test.png";
+    if (frame.save(path)) {
+        qDebug("Milestone 3: screenshot saved to %s", qPrintable(path));
+    } else {
+        qWarning("Milestone 3: failed to save screenshot to %s", qPrintable(path));
+    }
+
+    // Capture one frame only — stop the worker.
+    QMetaObject::invokeMethod(m_worker, "stop", Qt::QueuedConnection);
+}
+
+void AppController::onCaptureError(const QString& message)
+{
+    // Runs on the main thread (QueuedConnection from worker).
+    // On macOS this is commonly a screen recording permission error.
+    QMessageBox::critical(
+        nullptr,
+        QStringLiteral("Screen Capture Error"),
+        message + QStringLiteral("\n\nOn macOS, go to System Settings › Privacy › Screen Recording and grant access.")
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +192,12 @@ void AppController::attachWorker(RecorderWorker* worker)
             this,     &AppController::onProgressUpdated,
             Qt::QueuedConnection);
 
-    // Clean up the thread when the worker is done
+    // Clean up the thread when the worker is done.
+    // Also null our pointers immediately so they're never dangling.
+    connect(m_workerThread, &QThread::finished, this, [this]() {
+        m_worker       = nullptr;
+        m_workerThread = nullptr;
+    }, Qt::QueuedConnection);
     connect(m_worker, &RecorderWorker::recordingFinished,
             m_workerThread, &QThread::quit,
             Qt::QueuedConnection);

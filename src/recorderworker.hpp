@@ -53,6 +53,10 @@ signals:
     // Emitted once when capture stops (after stop() is processed).
     void recordingFinished();
 
+    // Emitted when the capture backend reports an unrecoverable error
+    // (e.g. macOS screen recording permission denied).
+    void errorOccurred(const QString& message);
+
 protected:
     // Thread-safe getter for the current capture region. Subclasses call this
     // on every frame tick to get the live region rect.

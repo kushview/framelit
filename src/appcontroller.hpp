@@ -122,6 +122,10 @@ public slots:
     void onRegionChanged(const QRect& rect);
     void onRecordingFinished();
     void onProgressUpdated(qint64 elapsedMs);
+    // Prototype (Milestone 3): save the first captured frame as a PNG.
+    // Replaced in Milestone 4 by FrameStore buffering.
+    void onFirstFrameReceived(const QImage& frame);
+    void onCaptureError(const QString& message);
 
 signals:
     void stateChanged(sc::AppState newState);

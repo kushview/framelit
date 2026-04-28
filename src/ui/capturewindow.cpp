@@ -2,24 +2,69 @@
 
 #include <QColor>
 #include <QCursor>
+#include <QFont>
+#include <QGraphicsRectItem>
+#include <QGraphicsScene>
+#include <QGraphicsSimpleTextItem>
 #include <QMouseEvent>
-#include <QPainter>
 #include <QPen>
 
 namespace sc {
 
 CaptureWindow::CaptureWindow(QObject* /*controller*/, QWidget* parent)
-    : QWidget(parent)
+    : QGraphicsView(parent)
 {
     setWindowFlags(Qt::FramelessWindowHint
                  | Qt::WindowStaysOnTopHint
                  | Qt::Tool);
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
-    setMouseTracking(true); // receive mouseMoveEvent without a button held (cursor shape updates)
+    setMouseTracking(true);
 
-    // Default geometry — AppController will push the real region via slot
+    // The QGraphicsView has an internal viewport widget — both need
+    // transparency set so macOS composites the window correctly.
+    viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
+    viewport()->setAttribute(Qt::WA_NoSystemBackground, true);
+
+    // No frame, no scroll bars — the view IS the window.
+    setFrameShape(QFrame::NoFrame);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    // All mouse handling is at the view level; items are display-only.
+    setInteractive(false);
+
+    // Near-zero alpha so macOS still delivers mouse events to this window
+    // even over the visually transparent interior. 1/255 ≈ 0.4% opacity,
+    // imperceptible to the eye.
+    setBackgroundBrush(QColor(0, 0, 0, 1));
+
+    // Scene — rect is kept in sync with the view size via updateSceneGeometry()
+    m_scene = new QGraphicsScene(this);
+    setScene(m_scene);
+
+    // Border rectangle
+    m_borderItem = m_scene->addRect(QRectF(),
+                                    QPen(borderColor(), kBorderWidth),
+                                    Qt::NoBrush);
+    m_borderItem->setZValue(1);
+
+    // Dimension label (e.g. "800×450") shown in the top-left corner
+    m_labelItem = m_scene->addSimpleText(QString());
+    QFont labelFont;
+    labelFont.setPointSize(9);
+    m_labelItem->setFont(labelFont);
+    m_labelItem->setBrush(borderColor());
+    m_labelItem->setZValue(2);
+
+    // 8 resize handles: corners (0-3) then edge midpoints (4-7)
+    for (int i = 0; i < 8; ++i) {
+        m_handles[i] = m_scene->addRect(QRectF(), Qt::NoPen, QBrush(borderColor()));
+        m_handles[i]->setZValue(2);
+    }
+
     setGeometry(100, 100, 800, 450);
+    updateSceneGeometry();
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +80,9 @@ void CaptureWindow::onStateChanged(sc::AppState state)
     bool passthrough = (state == AppState::Recording);
     setAttribute(Qt::WA_TransparentForMouseEvents, passthrough);
 
-    update(); // repaint border color
+    // Update border/handle colors and handle visibility — no repaint needed;
+    // QGraphicsItem::setPen/setBrush triggers only the affected item's redraw.
+    updateSceneGeometry();
 }
 
 void CaptureWindow::onRegionChanged(const sc::CaptureRegion& region)
@@ -48,43 +95,49 @@ void CaptureWindow::onRegionChanged(const sc::CaptureRegion& region)
 }
 
 // ---------------------------------------------------------------------------
-// Paint
+// Scene layout
 // ---------------------------------------------------------------------------
 
-void CaptureWindow::paintEvent(QPaintEvent*)
+void CaptureWindow::updateSceneGeometry()
 {
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing, false);
+    const qreal w  = width();
+    const qreal ht = height();
+    const qreal h  = kHandleSize;
+    const qreal bw = kBorderWidth;
 
-    // Alpha=1 (not zero) so macOS delivers mouse events to the interior.
-    // Visually this is imperceptible (0.4% opacity).
-    p.fillRect(rect(), QColor(0, 0, 0, 1));
+    setSceneRect(0, 0, w, ht);
 
-    // Colored border
-    QPen pen(borderColor(), kBorderWidth);
-    p.setPen(pen);
-    p.setBrush(Qt::NoBrush);
-    QRect borderRect = rect().adjusted(kBorderWidth / 2, kBorderWidth / 2,
-                                      -kBorderWidth / 2, -kBorderWidth / 2);
-    p.drawRect(borderRect);
+    // Border
+    m_borderItem->setRect(QRectF(bw / 2.0, bw / 2.0, w - bw, ht - bw));
+    m_borderItem->setPen(QPen(borderColor(), bw));
 
-    // Resize handles (small filled squares at corners and edge midpoints)
-    if (m_state == AppState::Idle || m_state == AppState::Positioning) {
-        p.setBrush(borderColor());
-        p.setPen(Qt::NoPen);
-        const int h  = kHandleSize;
-        const int h2 = h / 2;
-        int w = width(), ht = height();
-        // Corners
-        p.drawRect(0,          0,           h, h);
-        p.drawRect(w - h,      0,           h, h);
-        p.drawRect(0,          ht - h,      h, h);
-        p.drawRect(w - h,      ht - h,      h, h);
-        // Edge midpoints
-        p.drawRect(w / 2 - h2, 0,           h, h);
-        p.drawRect(w / 2 - h2, ht - h,      h, h);
-        p.drawRect(0,          ht / 2 - h2, h, h);
-        p.drawRect(w - h,      ht / 2 - h2, h, h);
+    // Dimension label — color follows state, positioned just inside top-left corner
+    const QColor bc = borderColor();
+    m_labelItem->setBrush(bc);
+    m_labelItem->setText(QString("%1\xc3\x97%2").arg(int(w)).arg(int(ht)));
+    m_labelItem->setPos(bw + 4, bw + 4);
+
+    // Resize handles: visible only when the user can interact with the window
+    const bool showHandles = (m_state == AppState::Idle ||
+                              m_state == AppState::Positioning);
+    const QBrush handleBrush(bc);
+
+    // Index order: TL, TR, BL, BR, EdgeTop, EdgeBottom, EdgeLeft, EdgeRight
+    const QPointF positions[8] = {
+        {0,             0            },  // 0: CornerTL
+        {w - h,         0            },  // 1: CornerTR
+        {0,             ht - h       },  // 2: CornerBL
+        {w - h,         ht - h       },  // 3: CornerBR
+        {w / 2 - h / 2, 0            },  // 4: EdgeTop
+        {w / 2 - h / 2, ht - h       },  // 5: EdgeBottom
+        {0,             ht / 2 - h / 2}, // 6: EdgeLeft
+        {w - h,         ht / 2 - h / 2}, // 7: EdgeRight
+    };
+
+    for (int i = 0; i < 8; ++i) {
+        m_handles[i]->setRect(QRectF(positions[i].x(), positions[i].y(), h, h));
+        m_handles[i]->setBrush(handleBrush);
+        m_handles[i]->setVisible(showHandles);
     }
 }
 
@@ -200,14 +253,15 @@ void CaptureWindow::mouseReleaseEvent(QMouseEvent* event)
 // mouseMoveEvent, these are guaranteed to carry the actual new geometry.
 void CaptureWindow::resizeEvent(QResizeEvent* event)
 {
-    QWidget::resizeEvent(event);
+    QGraphicsView::resizeEvent(event);
+    updateSceneGeometry();
     if (!m_suppressSignal)
         emit regionChanged(geometry());
 }
 
 void CaptureWindow::moveEvent(QMoveEvent* event)
 {
-    QWidget::moveEvent(event);
+    QGraphicsView::moveEvent(event);
     if (!m_suppressSignal)
         emit regionChanged(geometry());
 }
