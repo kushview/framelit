@@ -18,6 +18,7 @@ set(SOURCES
     src/appcontroller.cpp
     src/recorderworker.cpp
     src/capture/screencaptureworker.cpp
+    src/capture/framestore.cpp
     src/ui/capturewindow.cpp
     src/ui/controlbar.cpp
 )
@@ -26,6 +27,7 @@ set(HEADERS
     src/appcontroller.hpp
     src/recorderworker.hpp
     src/capture/screencaptureworker.hpp
+    src/capture/framestore.hpp
     src/ui/capturewindow.hpp
     src/ui/controlbar.hpp
 )

@@ -100,6 +100,7 @@ struct RecordingSettings {
 class CaptureWindow;
 class ControlBar;
 class RecorderWorker;
+class FrameStore;
 
 class AppController : public QObject {
     Q_OBJECT
@@ -122,9 +123,6 @@ public slots:
     void onRegionChanged(const QRect& rect);
     void onRecordingFinished();
     void onProgressUpdated(qint64 elapsedMs);
-    // Prototype (Milestone 3): save the first captured frame as a PNG.
-    // Replaced in Milestone 4 by FrameStore buffering.
-    void onFirstFrameReceived(const QImage& frame);
     void onCaptureError(const QString& message);
 
 signals:
@@ -150,6 +148,7 @@ private:
     ControlBar*     m_controlBar     = nullptr;
     RecorderWorker* m_worker         = nullptr;
     QThread*        m_workerThread   = nullptr;
+    FrameStore*     m_frameStore     = nullptr;
 };
 
 } // namespace sc

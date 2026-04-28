@@ -2,9 +2,9 @@
 
 #include "appcontroller.hpp"
 
-#include <QImage>
 #include <QMutex>
 #include <QObject>
+#include <QVideoFrame>
 
 namespace sc {
 
@@ -36,6 +36,11 @@ public:
     // while recording is in progress. Subclasses read via captureRegion().
     void setCaptureRegion(const CaptureRegion& region);
 
+    // Thread-safe getter for the current capture region.
+    // Public so AppController can snapshot the region at frame-emit time
+    // without subclassing.
+    CaptureRegion captureRegion() const;
+
 public slots:
     virtual void start()  = 0;
     virtual void stop()   = 0;
@@ -43,9 +48,10 @@ public slots:
     virtual void resume() = 0;
 
 signals:
-    // Emitted on every captured frame. Receiver (encoder worker) runs on its
-    // own thread; the connection should be Qt::QueuedConnection.
-    void frameReady(QImage frame);
+    // Emitted on every captured frame (ref-counted QVideoFrame — no copy).
+    // The frame may be GPU-resident. Receivers must call toImage() only if
+    // they actually need pixel data (e.g. the encoder), not on every frame.
+    void frameReady(QVideoFrame frame);
 
     // Emitted approximately once per second with total elapsed recording time.
     void progressUpdated(qint64 elapsedMs);
@@ -58,10 +64,6 @@ signals:
     void errorOccurred(const QString& message);
 
 protected:
-    // Thread-safe getter for the current capture region. Subclasses call this
-    // on every frame tick to get the live region rect.
-    CaptureRegion captureRegion() const;
-
     RecordingSettings m_settings;
 
 private:

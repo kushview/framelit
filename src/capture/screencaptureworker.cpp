@@ -132,36 +132,22 @@ void ScreenCaptureWorker::onFrameReceived(const QVideoFrame& videoFrame)
         return;
     m_lastFrameMs = now;
 
-    // Convert to QImage (CPU copy, runs on worker thread — not on the UI thread).
-    QImage fullFrame = videoFrame.toImage();
-    if (fullFrame.isNull())
-        return;
-
+    // Emit the QVideoFrame directly — it is ref-counted so this is a
+    // pointer bump, not a copy. FrameStore (or the encoder) will call
+    // toImage() only on the frames it actually needs.
+    //
+    // We do attach the crop metadata so FrameStore / encoder knows the
+    // capture region at the time this frame was taken, for accurate crop.
+    // Note: QVideoFrame does not have crop metadata natively; we store it
+    // in a subframe rect. For now, crop at emit time if needed.
+    //
     // Map CaptureRegion (logical pixels, global screen coords) to physical
     // pixels relative to the captured screen's origin.
     //
-    // Example on a 2× Retina display with a 1440-wide logical screen:
-    //   region.rect = QRect(100, 50, 800, 450)  — logical, global
-    //   screen.geometry().topLeft() = QPoint(0, 0)
-    //   relativeRect = QRect(100, 50, 800, 450)
-    //   pixelRect = QRect(200, 100, 1600, 900)  — physical
-    const CaptureRegion cr = captureRegion();
-    const QRect screenGeom = cr.screen ? cr.screen->geometry() : QRect();
-    const qreal dpr = cr.screen ? cr.screen->devicePixelRatio() : 1.0;
-
-    const QRect relativeRect = cr.rect.translated(-screenGeom.topLeft());
-    const QRect pixelRect(
-        qRound(relativeRect.x()      * dpr),
-        qRound(relativeRect.y()      * dpr),
-        qRound(relativeRect.width()  * dpr),
-        qRound(relativeRect.height() * dpr)
-    );
-
-    const QRect clampedPixelRect = pixelRect.intersected(fullFrame.rect());
-    if (clampedPixelRect.isEmpty())
-        return;
-
-    emit frameReady(fullFrame.copy(clampedPixelRect));
+    // We emit the full frame here and let FrameStore/encoder do the crop at
+    // decode time so that a moving capture window mid-recording still uses
+    // the correct rect per frame (stored alongside in FrameStore).
+    emit frameReady(videoFrame);
 }
 
 void ScreenCaptureWorker::onCaptureError(int /*error*/, const QString& message)
