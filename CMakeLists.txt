@@ -1,0 +1,50 @@
+cmake_minimum_required(VERSION 3.22)
+project(ScreenCaptureQt VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+# Find Qt6 — prefer the standard ~/Qt install location on macOS
+set(QT_DEFAULT_MAJOR_VERSION 6)
+list(PREPEND CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.11.0/macos")
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+
+set(SOURCES
+    src/main.cpp
+    src/appcontroller.cpp
+    src/ui/capturewindow.cpp
+    src/ui/controlbar.cpp
+)
+
+set(HEADERS
+    src/appcontroller.hpp
+    src/ui/capturewindow.hpp
+    src/ui/controlbar.hpp
+)
+
+qt_add_executable(screen-capture-qt
+    ${SOURCES}
+    ${HEADERS}
+)
+
+target_include_directories(screen-capture-qt PRIVATE src)
+
+target_link_libraries(screen-capture-qt PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+)
+
+# macOS bundle settings
+if(APPLE)
+    set_target_properties(screen-capture-qt PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.sc.screen-capture-qt"
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+    )
+endif()
