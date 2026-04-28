@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC ON)
 set(QT_DEFAULT_MAJOR_VERSION 6)
 list(PREPEND CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.11.0/macos")
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Test)
 
 set(SOURCES
     src/main.cpp
@@ -48,3 +48,23 @@ if(APPLE)
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
     )
 endif()
+
+# ---------------------------------------------------------------------------
+# Unit tests
+# ---------------------------------------------------------------------------
+enable_testing()
+
+qt_add_executable(capture_region_test
+    tests/capture_region_test.cpp
+)
+
+target_include_directories(capture_region_test PRIVATE src)
+
+target_link_libraries(capture_region_test PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Test
+)
+
+add_test(NAME CaptureRegionTest COMMAND capture_region_test)

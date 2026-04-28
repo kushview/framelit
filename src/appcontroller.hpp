@@ -35,6 +35,19 @@ struct CaptureRegion {
     bool isValid() const {
         return screen != nullptr && !rect.isEmpty();
     }
+
+    // Returns a new CaptureRegion whose rect is fully contained within
+    // screenBounds. If rect is larger than bounds it is shrunk to fit.
+    // The screen pointer is preserved.
+    CaptureRegion clampedTo(const QRect& screenBounds) const
+    {
+        int w = qMin(rect.width(),  screenBounds.width());
+        int h = qMin(rect.height(), screenBounds.height());
+        // Use x()+width() not right() — QRect::right() is left+width-1 (off-by-one)
+        int x = qBound(screenBounds.x(), rect.left(), screenBounds.x() + screenBounds.width()  - w);
+        int y = qBound(screenBounds.y(), rect.top(),  screenBounds.y() + screenBounds.height() - h);
+        return CaptureRegion{ screen, QRect(x, y, w, h) };
+    }
 };
 
 struct RecordingSettings {
