@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QRect>
 #include <QScreen>
+#include <QSettings>
+#include <QStandardPaths>
 #include <QString>
 
 namespace sc {
@@ -51,13 +53,41 @@ struct CaptureRegion {
 };
 
 struct RecordingSettings {
-    int fps           = 30;
-    OutputFormat format  = OutputFormat::Gif;
+    int fps              = 30;
+    OutputFormat  format  = OutputFormat::Gif;
     QualityPreset quality = QualityPreset::Medium;
-    bool showCursor   = true;
-    bool showClicks   = true;
-    bool countdown    = false;
+    bool showCursor      = true;
+    bool showClicks      = true;
+    bool countdown       = false;
     QString outputDir;
+
+    // Populate from QSettings. Any key not present keeps its default value.
+    static RecordingSettings load(QSettings& qs)
+    {
+        RecordingSettings s;
+        s.fps        = qs.value("fps",        s.fps).toInt();
+        s.format     = static_cast<OutputFormat>(
+                           qs.value("format", static_cast<int>(s.format)).toInt());
+        s.quality    = static_cast<QualityPreset>(
+                           qs.value("quality", static_cast<int>(s.quality)).toInt());
+        s.showCursor = qs.value("showCursor", s.showCursor).toBool();
+        s.showClicks = qs.value("showClicks", s.showClicks).toBool();
+        s.countdown  = qs.value("countdown",  s.countdown).toBool();
+        s.outputDir  = qs.value("outputDir",
+            QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
+        return s;
+    }
+
+    void save(QSettings& qs) const
+    {
+        qs.setValue("fps",        fps);
+        qs.setValue("format",     static_cast<int>(format));
+        qs.setValue("quality",    static_cast<int>(quality));
+        qs.setValue("showCursor", showCursor);
+        qs.setValue("showClicks", showClicks);
+        qs.setValue("countdown",  countdown);
+        qs.setValue("outputDir",  outputDir);
+    }
 };
 
 // ---------------------------------------------------------------------------

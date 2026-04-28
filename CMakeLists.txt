@@ -68,3 +68,18 @@ target_link_libraries(capture_region_test PRIVATE
 )
 
 add_test(NAME CaptureRegionTest COMMAND capture_region_test)
+
+qt_add_executable(recording_settings_test
+    tests/recording_settings_test.cpp
+)
+
+target_include_directories(recording_settings_test PRIVATE src)
+
+target_link_libraries(recording_settings_test PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Test
+)
+
+add_test(NAME RecordingSettingsTest COMMAND recording_settings_test)

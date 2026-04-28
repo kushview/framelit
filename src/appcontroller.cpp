@@ -4,8 +4,6 @@
 
 #include <QGuiApplication>
 #include <QScreen>
-#include <QSettings>
-#include <QStandardPaths>
 
 namespace sc {
 
@@ -119,12 +117,7 @@ void AppController::setState(AppState s)
 void AppController::loadSettings()
 {
     QSettings qs("sc", "ScreenCapture");
-    m_settings.fps        = qs.value("fps", 30).toInt();
-    m_settings.showCursor = qs.value("showCursor", true).toBool();
-    m_settings.showClicks = qs.value("showClicks", true).toBool();
-    m_settings.countdown  = qs.value("countdown", false).toBool();
-    m_settings.outputDir  = qs.value("outputDir",
-        QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
+    m_settings = RecordingSettings::load(qs);
 
     QRect savedRect = qs.value("captureRect").toRect();
     if (savedRect.isValid())
@@ -134,11 +127,7 @@ void AppController::loadSettings()
 void AppController::saveSettings()
 {
     QSettings qs("sc", "ScreenCapture");
-    qs.setValue("fps",        m_settings.fps);
-    qs.setValue("showCursor", m_settings.showCursor);
-    qs.setValue("showClicks", m_settings.showClicks);
-    qs.setValue("countdown",  m_settings.countdown);
-    qs.setValue("outputDir",  m_settings.outputDir);
+    m_settings.save(qs);
     qs.setValue("captureRect", m_region.rect);
 }
 
