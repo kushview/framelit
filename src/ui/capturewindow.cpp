@@ -311,11 +311,10 @@ void CaptureWindow::showEvent(QShowEvent* event)
 {
     QGraphicsView::showEvent(event);
 #ifdef Q_OS_MACOS
-    // The NSWindow handle is not valid until after the first paint cycle.
-    // Defer the exclusion call so it runs after the window is fully attached.
     WId wid = winId();
     QTimer::singleShot(0, this, [wid]() {
         excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
+        setWindowHidesOnDeactivate(reinterpret_cast<void*>(wid), false);
     });
 #endif
 }

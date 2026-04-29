@@ -9,6 +9,14 @@
 void excludeWindowFromScreenCapture(void* nativeWindowHandle);
 void setWindowCaptureExcluded(void* nativeWindowHandle, bool excluded);
 
+// Sets the NSWindowLevel. Use NSFloatingWindowLevel (3) normally and
+// NSStatusWindowLevel (25) to stay above all apps while click-through is active.
+void setNSWindowLevel(void* nativeWindowHandle, int level);
+
+// Prevents an NSPanel (Qt::Tool window) from auto-hiding when the app deactivates.
+// Call this once after the window is shown.
+void setWindowHidesOnDeactivate(void* nativeWindowHandle, bool hides);
+
 // Proactively checks screen recording permission and triggers the macOS TCC
 // consent prompt if not yet granted. Call once at app startup (before any
 // QScreenCapture usage) so the system dialog appears at a predictable moment

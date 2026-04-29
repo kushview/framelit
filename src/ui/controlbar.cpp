@@ -163,6 +163,13 @@ void ControlBar::snapToRegion(const QRect& captureRect)
 void ControlBar::onStateChanged(sc::AppState state)
 {
     m_state = state;
+#ifdef Q_OS_MACOS
+    // Mirror the capture window's level change: NSStatusWindowLevel (25) while
+    // recording so the control bar can't be buried when another app activates.
+    const int level = (state == AppState::Recording) ? 25 /*NSStatusWindowLevel*/
+                                                      : 3  /*NSFloatingWindowLevel*/;
+    setNSWindowLevel(reinterpret_cast<void*>(winId()), level);
+#endifhello
     updateUiForState(state);
 }
 
@@ -291,6 +298,7 @@ void ControlBar::showEvent(QShowEvent* event)
     WId wid = winId();
     QTimer::singleShot(0, this, [wid]() {
         excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
+        setWindowHidesOnDeactivate(reinterpret_cast<void*>(wid), false);
     });
 #endif
 }
