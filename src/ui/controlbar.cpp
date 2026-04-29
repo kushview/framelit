@@ -13,6 +13,8 @@
 #include "../platform/macos_window.h"
 #endif
 
+#define SC_USE_DEMO_MODE 0
+
 namespace sc {
 
 static constexpr int kBarHeight  = 36;
@@ -45,6 +47,11 @@ ControlBar::ControlBar(CaptureWindow* captureWindow, QWidget* parent)
             snapToRegion(m_captureWindow->geometry());
     });
     m_snapTimer->start(16);
+}
+
+bool ControlBar::demoMode() const
+{
+    return m_demoButton && m_demoButton->isChecked();
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +95,25 @@ void ControlBar::buildUi()
     m_stopButton->setVisible(false);
     connect(m_stopButton, &QPushButton::clicked, this, &ControlBar::stopRequested);
     layout->addWidget(m_stopButton);
+#if SC_USE_DEMO_MODE
+    m_demoButton = new QPushButton("Demo", this);
+    m_demoButton->setCheckable(true);
+    m_demoButton->setChecked(false);
+    m_demoButton->setToolTip("Include capture frame in recording (for demos)");
+    m_demoButton->setStyleSheet(
+        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 8px; }"
+        "QPushButton:checked { color: #1e2029; background-color: #facc15; border-color: #facc15; font-weight: bold; }"
+        "QPushButton:hover { border-color: #64748b; }");
+    connect(m_demoButton, &QPushButton::toggled, this, [this](bool demo) {
+        // Toggle NSWindowSharingNone so all screen recorders (QuickTime etc.) see/hide us.
+        auto exclude = [](WId wid, bool ex) {
+            setWindowCaptureExcluded(reinterpret_cast<void*>(wid), ex);
+        };
+        if (m_captureWindow) exclude(m_captureWindow->winId(), !demo);
+        exclude(winId(), !demo);
+    });
+    layout->addWidget(m_demoButton);
+#endif
 
     m_closeButton = new QPushButton("✕", this);
     m_closeButton->setFixedWidth(28);

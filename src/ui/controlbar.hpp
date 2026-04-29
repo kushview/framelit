@@ -25,6 +25,10 @@ public:
 
     void snapToRegion(const QRect& captureRect);
 
+    // When true the app's own windows are NOT excluded from the SCK capture,
+    // so the capture frame / control bar appear in the recorded output.
+    bool demoMode() const;
+
 signals:
     void startRequested();
     void stopRequested();
@@ -57,6 +61,7 @@ private:
     QPushButton* m_recordButton    = nullptr;
     QPushButton* m_pauseButton     = nullptr;
     QPushButton* m_stopButton      = nullptr;
+    QPushButton* m_demoButton      = nullptr;
     QPushButton* m_closeButton     = nullptr;
 
     AppState m_state = AppState::Idle;

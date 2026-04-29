@@ -42,3 +42,14 @@ void excludeWindowFromScreenCapture(void* nativeWindowHandle)
     // and the macOS screenshot capture pipeline.
     window.sharingType = NSWindowSharingNone;
 }
+
+void setWindowCaptureExcluded(void* nativeWindowHandle, bool excluded)
+{
+    if (!nativeWindowHandle)
+        return;
+    NSView*   view   = reinterpret_cast<NSView*>(nativeWindowHandle);
+    NSWindow* window = [view window];
+    if (!window)
+        return;
+    window.sharingType = excluded ? NSWindowSharingNone : NSWindowSharingReadOnly;
+}

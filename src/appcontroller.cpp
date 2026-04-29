@@ -94,7 +94,8 @@ void AppController::onStartRequested()
     connect(m_strategy, &RecordingStrategy::encodingFailed,
             this, &AppController::onEncodingFailed);
 
-    auto* worker = new ScreenCaptureWorker(m_region, m_settings, {
+    const bool demo = m_controlBar && m_controlBar->demoMode();
+    auto* worker = new ScreenCaptureWorker(m_region, m_settings, demo ? QList<WId>{} : QList<WId>{
         m_captureWindow ? m_captureWindow->winId() : WId{0},
         m_controlBar    ? m_controlBar->winId()    : WId{0},
     });
