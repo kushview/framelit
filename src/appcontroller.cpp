@@ -14,6 +14,7 @@
 #include <QMessageBox>
 #include <QScreen>
 #include <QThread>
+#include <qwindowdefs.h>
 
 namespace sc {
 
@@ -93,7 +94,10 @@ void AppController::onStartRequested()
     connect(m_strategy, &RecordingStrategy::encodingFailed,
             this, &AppController::onEncodingFailed);
 
-    auto* worker = new ScreenCaptureWorker(m_region, m_settings);
+    auto* worker = new ScreenCaptureWorker(m_region, m_settings, {
+        m_captureWindow ? m_captureWindow->winId() : WId{0},
+        m_controlBar    ? m_controlBar->winId()    : WId{0},
+    });
     attachWorker(worker);
 
     // Route captured frames to the strategy.

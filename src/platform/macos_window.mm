@@ -19,6 +19,14 @@ bool requestScreenRecordingPermission()
     return false;
 }
 
+unsigned int cgWindowIdForNativeHandle(void* nativeWindowHandle)
+{
+    if (!nativeWindowHandle) return 0;
+    NSView*   view = reinterpret_cast<NSView*>(nativeWindowHandle);
+    NSWindow* win  = [view window];
+    return win ? (unsigned int)[win windowNumber] : 0;
+}
+
 void excludeWindowFromScreenCapture(void* nativeWindowHandle)
 {
     if (!nativeWindowHandle)

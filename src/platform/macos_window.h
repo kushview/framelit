@@ -14,3 +14,8 @@ void excludeWindowFromScreenCapture(void* nativeWindowHandle);
 // rather than racing with the first recording attempt.
 // Returns true if permission is already granted, false otherwise.
 bool requestScreenRecordingPermission();
+
+// Returns the CGWindowID (window server ID) for a native macOS window handle.
+// nativeWindowHandle is QWidget::winId() cast to void* — i.e. an NSView*.
+// Must be called on the main thread.
+unsigned int cgWindowIdForNativeHandle(void* nativeWindowHandle);

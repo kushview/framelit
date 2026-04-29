@@ -1,37 +1,35 @@
 #pragma once
 
 #include "../recorderworker.hpp"
+#include "../platform/screencapturebackend.hpp"
 
 #include <QElapsedTimer>
 #include <QImage>
+#include <QList>
+#include <qwindowdefs.h>  // WId
 
-class QMediaCaptureSession;
-class QScreenCapture;
 class QTimer;
-class QVideoFrame;
-class QVideoSink;
 
 namespace sc {
 
-// Concrete RecorderWorker that uses QScreenCapture + QMediaCaptureSession +
-// QVideoSink to capture the screen (Qt 6.5+).
+// Concrete RecorderWorker that routes screen capture through a
+// ScreenCaptureBackend (platform-specific).
 //
-// Threading: lives on a dedicated QThread (managed by AppController).
-// All QScreenCapture / QMediaCaptureSession / QVideoSink objects are created
-// in start() on that thread. videoFrameChanged signals from QVideoSink arrive
-// on Qt multimedia's internal thread; Qt::AutoConnection routes them to this
-// object's thread via the event loop.
+// On macOS the SCK backend is used: it honours setExcludedWindowIds() so
+// overlay windows (CaptureWindow, ControlBar) are absent from captured frames.
+// On Windows/Linux the Qt backend is used: QScreenCapture + QVideoSink.
 //
-// Coordinate mapping: QScreenCapture delivers full-screen frames in physical
-// pixels. CaptureRegion::rect is in logical (device-independent) pixels.
-// onFrameReceived() maps the rect to physical pixels using QScreen::devicePixelRatio()
-// before calling QImage::copy().
+// Threading: lives on a dedicated QThread managed by AppController.
+// The backend is created in the constructor (main thread) and moved to the
+// worker thread along with this object via Qt's parent–child moveToThread.
+// start() / stop() are invoked via QMetaObject::invokeMethod on the worker thread.
 class ScreenCaptureWorker : public RecorderWorker {
     Q_OBJECT
 
 public:
     explicit ScreenCaptureWorker(const CaptureRegion& region,
                                  const RecordingSettings& settings,
+                                 const QList<WId>& excludedWindowIds = {},
                                  QObject* parent = nullptr);
     ~ScreenCaptureWorker() override;
 
@@ -42,25 +40,22 @@ public slots:
     void resume() override;
 
 private slots:
-    void onFrameReceived(const QVideoFrame& frame);
-    void onCaptureError(int error, const QString& message);
+    void onFrameArrived(const QImage& image);
 
 private:
-    QScreenCapture*       m_capture       = nullptr;
-    QMediaCaptureSession* m_session       = nullptr;
-    QVideoSink*           m_sink          = nullptr;
-    QTimer*               m_progressTimer = nullptr;
+    ScreenCaptureBackend* m_backend        = nullptr;
+    QTimer*               m_progressTimer  = nullptr;
 
     QElapsedTimer m_elapsed;
-    qint64        m_lastFrameMs = -1;  // ms timestamp of last emitted frame
-    qint64        m_frameIntervalMs;   // 1000 / settings.fps
+    qint64        m_lastFrameMs    = -1;
+    qint64        m_frameIntervalMs;
 
-    int  m_framesReceived = 0;  // total frames arriving from QVideoSink (diagnostic)
-    int  m_framesKept     = 0;  // frames that passed the FPS throttle (diagnostic)
+    int  m_framesReceived = 0;
+    int  m_framesKept     = 0;
 
-    bool m_running       = false;
-    bool m_paused        = false;
-    bool m_errorReported = false;  // prevent duplicate dialogs from queued signals
+    bool m_running = false;
+    bool m_paused  = false;
 };
 
 } // namespace sc
+

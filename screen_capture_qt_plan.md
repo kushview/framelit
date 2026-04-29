@@ -1499,4 +1499,5 @@ Unit tests use `Qt6::Test`. Test targets cover: `CaptureRegion` resize/clamp log
 # Nice-to-haves
 
 - **High-DPI GIF output**: GIF encoder currently divides physical crop dimensions by `dpr` to produce 1× logical output (e.g. 1277×752 on a 2× Retina display). A `GifExportSettings::hiRes` flag could skip the division and write at full physical resolution (2554×1504) for users who want maximum quality at the cost of file size.
+- **Proper SCK window exclusion**: `NSWindowSharingNone` is respected by macOS screenshot (SCK with `excludingWindows:` filter) but NOT by Qt's `QScreenCapture` (which creates its SCK stream without an exclusion list). Workaround: the capture window border is hidden during recording. Proper fix requires replacing `QScreenCapture` with a direct SCK implementation using `[SCContentFilter initWithDisplay:excludingWindows:]` to exclude our overlay windows.
 

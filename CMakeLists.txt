@@ -24,10 +24,18 @@ set(SOURCES
     src/encoding/gifencoder.cpp
     src/ui/capturewindow.cpp
     src/ui/controlbar.cpp
+    src/platform/screencapturebackend.hpp
 )
 
 if(APPLE)
-    list(APPEND SOURCES src/platform/macos_window.mm)
+    list(APPEND SOURCES
+        src/platform/macos_window.mm
+        src/platform/sckbackend.mm
+    )
+else()
+    list(APPEND SOURCES
+        src/platform/qtscreenbackend.cpp
+    )
 endif()
 
 set(HEADERS
@@ -36,10 +44,16 @@ set(HEADERS
     src/capture/screencaptureworker.hpp
     src/capture/framestore.hpp
     src/encoding/gifencoder.hpp
+    src/platform/screencapturebackend.hpp
+    src/platform/sckbackend.hpp
     src/platform/macos_window.h
     src/ui/capturewindow.hpp
     src/ui/controlbar.hpp
 )
+
+if(NOT APPLE)
+    list(APPEND HEADERS src/platform/qtscreenbackend.hpp)
+endif()
 
 qt_add_executable(screen-capture-qt
     ${SOURCES}
@@ -74,7 +88,13 @@ target_link_libraries(screen-capture-qt PRIVATE
 )
 
 if(APPLE)
-    target_link_libraries(screen-capture-qt PRIVATE "-framework AppKit")
+    target_link_libraries(screen-capture-qt PRIVATE
+        "-framework AppKit"
+        "-framework ScreenCaptureKit"
+        "-framework CoreMedia"
+        "-framework CoreVideo"
+        "-framework CoreGraphics"
+    )
 endif()
 
 # macOS bundle settings
