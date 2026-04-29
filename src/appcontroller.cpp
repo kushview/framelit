@@ -2,9 +2,11 @@
 #include "recorderworker.hpp"
 #include "capture/screencaptureworker.hpp"
 #include "capture/framestore.hpp"
+#include "encoding/gifencoder.hpp"
 #include "ui/capturewindow.hpp"
 #include "ui/controlbar.hpp"
 
+#include <QDateTime>
 #include <QDir>
 #include <QGuiApplication>
 #include <QMessageBox>
@@ -144,8 +146,54 @@ void AppController::onRecordingFinished()
 {
     qDebug("Recording finished. Frames buffered: %d", m_frameStore->frameCount());
     setState(AppState::Processing);
-    // TODO (Milestone 5): hand m_frameStore to GifEncoder worker
-    setState(AppState::Idle);
+
+    if (m_frameStore->frameCount() == 0) {
+        qWarning("No frames captured — skipping GIF export.");
+        setState(AppState::Idle);
+        return;
+    }
+
+    // Build output path: ~/Movies/capture-YYYY-MM-DD-HHMMSS.gif
+    const QString timestamp =
+        QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd-HHmmss"));
+    const QString outputDir = m_settings.outputDir.isEmpty()
+        ? QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)
+        : m_settings.outputDir;
+    QDir().mkpath(outputDir);
+    const QString outputPath =
+        outputDir + QDir::separator() +
+        QStringLiteral("capture-%1.gif").arg(timestamp);
+
+    GifExportSettings gifSettings;
+    gifSettings.outputFps = qMin(10, m_settings.fps);  // cap at 10 fps for GIF
+    gifSettings.maxWidth  = 800;
+    gifSettings.quality   = m_settings.quality;
+
+    // Tear down any leftover encoder thread from a previous recording.
+    if (m_encoderThread) {
+        m_encoderThread->quit();
+        m_encoderThread->wait();
+        m_encoderThread->deleteLater();
+        m_encoderThread = nullptr;
+    }
+
+    m_encoderThread = new QThread(this);
+    auto* encoder = new GifEncoder(m_frameStore, gifSettings, m_settings.fps, outputPath);
+    encoder->moveToThread(m_encoderThread);
+
+    connect(m_encoderThread, &QThread::started,
+            encoder, &GifEncoder::encode);
+    connect(encoder, &GifEncoder::progress,
+            this, &AppController::onEncodingProgress);
+    connect(encoder, &GifEncoder::finished,
+            this, &AppController::onEncodingFinished);
+    connect(encoder, &GifEncoder::failed,
+            this, &AppController::onEncodingFailed);
+    // Clean up encoder object when thread finishes.
+    connect(m_encoderThread, &QThread::finished,
+            encoder, &QObject::deleteLater);
+
+    m_encoderThread->start();
 }
 
 void AppController::onProgressUpdated(qint64 elapsedMs)
@@ -158,10 +206,46 @@ void AppController::onCaptureError(const QString& message)
     // Runs on the main thread (QueuedConnection from worker).
     // On macOS this is commonly a screen recording permission error.
     QMessageBox::critical(
-        nullptr,
+        m_controlBar,
         QStringLiteral("Screen Capture Error"),
         message + QStringLiteral("\n\nOn macOS, go to System Settings › Privacy › Screen Recording and grant access.")
     );
+}
+
+void AppController::onEncodingProgress(float fraction)
+{
+    Q_UNUSED(fraction)
+    // TODO (Milestone 6): surface to progress indicator in control bar
+}
+
+void AppController::onEncodingFinished(const QString& filePath)
+{
+    qDebug() << "GIF saved:" << filePath;
+    if (m_encoderThread) {
+        m_encoderThread->quit();
+        m_encoderThread->wait();
+        m_encoderThread->deleteLater();
+        m_encoderThread = nullptr;
+    }
+    setState(AppState::Idle);
+    // TODO (Milestone 6): open preview
+}
+
+void AppController::onEncodingFailed(const QString& reason)
+{
+    qWarning() << "GIF encoding failed:" << reason;
+    if (m_encoderThread) {
+        m_encoderThread->quit();
+        m_encoderThread->wait();
+        m_encoderThread->deleteLater();
+        m_encoderThread = nullptr;
+    }
+    QMessageBox::critical(
+        m_controlBar,
+        QStringLiteral("Encoding Error"),
+        reason
+    );
+    setState(AppState::Idle);
 }
 
 // ---------------------------------------------------------------------------

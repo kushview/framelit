@@ -55,10 +55,14 @@ void ScreenCaptureWorker::start()
     // Use a lambda to bridge the typed enum to our untyped int overload so
     // the signal is forward-compatible without depending on the enum header
     // being visible throughout the codebase.
+    // Use QueuedConnection so the error handler never runs while setActive()
+    // is still on the call stack. A direct/auto connection would let
+    // onCaptureError → stop() → delete m_capture fire while we're inside
+    // m_capture's own signal emission → use-after-free → SIGSEGV.
     connect(m_capture, &QScreenCapture::errorOccurred,
             this, [this](QScreenCapture::Error err, const QString& msg) {
                 onCaptureError(static_cast<int>(err), msg);
-            });
+            }, Qt::QueuedConnection);
 
     // Progress timer — emits every second on the worker thread.
     m_progressTimer = new QTimer(this);

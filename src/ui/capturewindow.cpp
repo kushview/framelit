@@ -8,6 +8,11 @@
 #include <QGraphicsSimpleTextItem>
 #include <QMouseEvent>
 #include <QPen>
+#include <QTimer>
+
+#ifdef Q_OS_MACOS
+#include "../platform/macos_window.h"
+#endif
 
 namespace sc {
 
@@ -251,6 +256,19 @@ void CaptureWindow::mouseReleaseEvent(QMouseEvent* event)
 // resizeEvent and moveEvent fire after macOS has committed the window
 // geometry change to the compositor — unlike our synchronous emit inside
 // mouseMoveEvent, these are guaranteed to carry the actual new geometry.
+void CaptureWindow::showEvent(QShowEvent* event)
+{
+    QGraphicsView::showEvent(event);
+#ifdef Q_OS_MACOS
+    // The NSWindow handle is not valid until after the first paint cycle.
+    // Defer the exclusion call so it runs after the window is fully attached.
+    WId wid = winId();
+    QTimer::singleShot(0, this, [wid]() {
+        excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
+    });
+#endif
+}
+
 void CaptureWindow::resizeEvent(QResizeEvent* event)
 {
     QGraphicsView::resizeEvent(event);

@@ -101,6 +101,7 @@ class CaptureWindow;
 class ControlBar;
 class RecorderWorker;
 class FrameStore;
+class GifEncoder;
 
 class AppController : public QObject {
     Q_OBJECT
@@ -124,6 +125,9 @@ public slots:
     void onRecordingFinished();
     void onProgressUpdated(qint64 elapsedMs);
     void onCaptureError(const QString& message);
+    void onEncodingProgress(float fraction);
+    void onEncodingFinished(const QString& filePath);
+    void onEncodingFailed(const QString& reason);
 
 signals:
     void stateChanged(sc::AppState newState);
@@ -149,6 +153,7 @@ private:
     RecorderWorker* m_worker         = nullptr;
     QThread*        m_workerThread   = nullptr;
     FrameStore*     m_frameStore     = nullptr;
+    QThread*        m_encoderThread  = nullptr;
 };
 
 } // namespace sc

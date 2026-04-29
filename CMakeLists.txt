@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(ScreenCaptureQt VERSION 0.1.0 LANGUAGES CXX)
+project(ScreenCaptureQt VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,15 +19,22 @@ set(SOURCES
     src/recorderworker.cpp
     src/capture/screencaptureworker.cpp
     src/capture/framestore.cpp
+    src/encoding/gifencoder.cpp
     src/ui/capturewindow.cpp
     src/ui/controlbar.cpp
 )
+
+if(APPLE)
+    list(APPEND SOURCES src/platform/macos_window.mm)
+endif()
 
 set(HEADERS
     src/appcontroller.hpp
     src/recorderworker.hpp
     src/capture/screencaptureworker.hpp
     src/capture/framestore.hpp
+    src/encoding/gifencoder.hpp
+    src/platform/macos_window.h
     src/ui/capturewindow.hpp
     src/ui/controlbar.hpp
 )
@@ -39,6 +46,20 @@ qt_add_executable(screen-capture-qt
 
 target_include_directories(screen-capture-qt PRIVATE src)
 
+# ---------------------------------------------------------------------------
+# giflib (Homebrew preferred; FetchContent fallback)
+# ---------------------------------------------------------------------------
+find_library(GIFLIB_LIB gif HINTS /opt/homebrew/opt/giflib/lib)
+find_path(GIFLIB_INCLUDE_DIR gif_lib.h HINTS /opt/homebrew/opt/giflib/include)
+
+if(GIFLIB_LIB AND GIFLIB_INCLUDE_DIR)
+    message(STATUS "Found giflib: ${GIFLIB_LIB}")
+else()
+    message(FATAL_ERROR "giflib not found. Install with: brew install giflib")
+endif()
+
+target_include_directories(screen-capture-qt PRIVATE ${GIFLIB_INCLUDE_DIR})
+
 target_link_libraries(screen-capture-qt PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -47,7 +68,12 @@ target_link_libraries(screen-capture-qt PRIVATE
     Qt6::MultimediaWidgets
     Qt6::OpenGL
     Qt6::OpenGLWidgets
+    ${GIFLIB_LIB}
 )
+
+if(APPLE)
+    target_link_libraries(screen-capture-qt PRIVATE "-framework AppKit")
+endif()
 
 # macOS bundle settings
 if(APPLE)
@@ -56,6 +82,13 @@ if(APPLE)
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.sc.screen-capture-qt"
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+    )
+    # Ad-hoc sign with screen recording entitlement so TCC grants work.
+    add_custom_command(TARGET screen-capture-qt POST_BUILD
+        COMMAND codesign --force --deep --sign -
+                --entitlements "${CMAKE_SOURCE_DIR}/entitlements.plist"
+                "$<TARGET_BUNDLE_DIR:screen-capture-qt>"
+        COMMENT "Ad-hoc signing with screen recording entitlement"
     )
 endif()
 

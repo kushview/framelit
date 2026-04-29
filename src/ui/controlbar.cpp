@@ -7,6 +7,11 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScreen>
+#include <QTimer>
+
+#ifdef Q_OS_MACOS
+#include "../platform/macos_window.h"
+#endif
 
 namespace sc {
 
@@ -201,6 +206,17 @@ void ControlBar::mouseReleaseEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton)
         m_dragging = false;
     QWidget::mouseReleaseEvent(event);
+}
+
+void ControlBar::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+#ifdef Q_OS_MACOS
+    WId wid = winId();
+    QTimer::singleShot(0, this, [wid]() {
+        excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
+    });
+#endif
 }
 
 } // namespace sc

@@ -41,6 +41,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     // These fire AFTER macOS has committed the geometry change, making
     // them reliable for notifying the control bar to reposition.
     void resizeEvent(QResizeEvent* event) override;
