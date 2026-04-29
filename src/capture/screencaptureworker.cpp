@@ -1,5 +1,6 @@
 #include "screencaptureworker.hpp"
 
+#include <QDebug>
 #include <QMediaCaptureSession>
 #include <QMessageBox>
 #include <QScreen>
@@ -75,8 +76,14 @@ void ScreenCaptureWorker::start()
     m_paused  = false;
     m_errorReported = false;
     m_lastFrameMs = -1;
+    m_framesReceived = 0;
+    m_framesKept = 0;
     m_elapsed.start();
     m_progressTimer->start();
+
+    qDebug("[SCW] Starting capture: fps=%d frameIntervalMs=%lld",
+           m_settings.fps, m_frameIntervalMs);
+
     m_capture->setActive(true);
 }
 
@@ -84,6 +91,9 @@ void ScreenCaptureWorker::stop()
 {
     if (!m_running)
         return;
+
+    qDebug("[SCW] stop(): frames received=%d kept=%d elapsed=%lldms",
+           m_framesReceived, m_framesKept, m_elapsed.elapsed());
 
     m_running = false;
 
@@ -131,32 +141,47 @@ void ScreenCaptureWorker::onFrameReceived(const QVideoFrame& videoFrame)
     if (!m_running || m_paused)
         return;
 
+    ++m_framesReceived;
+
     // FPS throttle: skip frames that arrive faster than the target rate.
     const qint64 now = m_elapsed.elapsed();
     if (m_lastFrameMs >= 0 && (now - m_lastFrameMs) < m_frameIntervalMs)
         return;
     m_lastFrameMs = now;
 
-    // Emit the QVideoFrame directly — it is ref-counted so this is a
-    // pointer bump, not a copy. FrameStore (or the encoder) will call
-    // toImage() only on the frames it actually needs.
+    ++m_framesKept;
+
+    // Log every 30 kept frames so we can see the effective capture rate.
+    if (m_framesKept % 30 == 0) {
+        qDebug("[SCW] frames received=%d kept=%d elapsed=%lldms (effective ~%.1f fps)",
+               m_framesReceived, m_framesKept, now,
+               now > 0 ? m_framesKept * 1000.0 / now : 0.0);
+    }
+
+    // Convert to QImage HERE on the worker thread before emitting.
     //
-    // We do attach the crop metadata so FrameStore / encoder knows the
-    // capture region at the time this frame was taken, for accurate crop.
-    // Note: QVideoFrame does not have crop metadata natively; we store it
-    // in a subframe rect. For now, crop at emit time if needed.
+    // On macOS, QVideoFrame wraps a CMSampleBuffer from ScreenCaptureKit.
+    // ScreenCaptureKit maintains a small internal buffer pool (~8-16 frames).
+    // If we store QVideoFrame in FrameStore, each held frame keeps its
+    // CMSampleBuffer reference alive. Once the pool is exhausted, SCK stops
+    // delivering new frames entirely — causing the "always N frames" bug.
     //
-    // Map CaptureRegion (logical pixels, global screen coords) to physical
-    // pixels relative to the captured screen's origin.
-    //
-    // We emit the full frame here and let FrameStore/encoder do the crop at
-    // decode time so that a moving capture window mid-recording still uses
-    // the correct rect per frame (stored alongside in FrameStore).
-    emit frameReady(videoFrame);
+    // Calling toImage() copies the pixels out and releases the CMSampleBuffer
+    // back to the pool immediately, allowing SCK to keep streaming.
+    QImage img = videoFrame.toImage();
+    if (img.isNull())
+        return;
+
+    // Snapshot the current capture region under the mutex so it's consistent
+    // with this frame's timestamp (capture window may be moving mid-recording).
+    emit frameReady(img, captureRegion());
 }
 
-void ScreenCaptureWorker::onCaptureError(int /*error*/, const QString& message)
+void ScreenCaptureWorker::onCaptureError(int error, const QString& message)
 {
+    qDebug("[SCW] onCaptureError: code=%d msg=%s (already reported=%s)",
+           error, qPrintable(message), m_errorReported ? "yes" : "no");
+
     // Guard: QueuedConnection can queue multiple error signals before stop()
     // runs. Only report and stop once.
     if (m_errorReported)

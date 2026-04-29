@@ -93,11 +93,11 @@ void AppController::onStartRequested()
     attachWorker(worker);
 
     // Every kept frame is buffered into FrameStore on the main thread.
-    // The lambda captures the worker's current CaptureRegion at emit time
-    // so a moving capture window is recorded accurately per-frame.
+    // The QImage and CaptureRegion are both emitted by the worker at
+    // capture time, so no additional region snapshot is needed here.
     connect(worker, &RecorderWorker::frameReady,
-            this, [this, worker](const QVideoFrame& frame) {
-                m_frameStore->addFrame(frame, worker->captureRegion());
+            this, [this](const QImage& image, const sc::CaptureRegion& region) {
+                m_frameStore->addFrame(image, region);
             },
             Qt::QueuedConnection);
 

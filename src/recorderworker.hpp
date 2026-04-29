@@ -2,6 +2,7 @@
 
 #include "appcontroller.hpp"
 
+#include <QImage>
 #include <QMutex>
 #include <QObject>
 #include <QVideoFrame>
@@ -48,10 +49,12 @@ public slots:
     virtual void resume() = 0;
 
 signals:
-    // Emitted on every captured frame (ref-counted QVideoFrame — no copy).
-    // The frame may be GPU-resident. Receivers must call toImage() only if
-    // they actually need pixel data (e.g. the encoder), not on every frame.
-    void frameReady(QVideoFrame frame);
+    // Emitted on every captured frame. Conversion to QImage happens on the
+    // worker thread immediately so the underlying CMSampleBuffer (macOS) is
+    // released back to the capture pool before this signal is queued — this
+    // prevents ScreenCaptureKit backpressure from starving the pipeline.
+    // CaptureRegion is snapshotted at emit time so a moving window is correct.
+    void frameReady(QImage image, sc::CaptureRegion region);
 
     // Emitted approximately once per second with total elapsed recording time.
     void progressUpdated(qint64 elapsedMs);

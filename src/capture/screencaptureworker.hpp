@@ -3,6 +3,7 @@
 #include "../recorderworker.hpp"
 
 #include <QElapsedTimer>
+#include <QImage>
 
 class QMediaCaptureSession;
 class QScreenCapture;
@@ -53,6 +54,9 @@ private:
     QElapsedTimer m_elapsed;
     qint64        m_lastFrameMs = -1;  // ms timestamp of last emitted frame
     qint64        m_frameIntervalMs;   // 1000 / settings.fps
+
+    int  m_framesReceived = 0;  // total frames arriving from QVideoSink (diagnostic)
+    int  m_framesKept     = 0;  // frames that passed the FPS throttle (diagnostic)
 
     bool m_running       = false;
     bool m_paused        = false;

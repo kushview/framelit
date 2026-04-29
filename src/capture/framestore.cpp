@@ -8,12 +8,12 @@ FrameStore::FrameStore(QObject* parent)
     : QObject(parent)
 {}
 
-void FrameStore::addFrame(const QVideoFrame& frame, const CaptureRegion& region)
+void FrameStore::addFrame(const QImage& image, const CaptureRegion& region)
 {
     int count;
     {
         QMutexLocker lock(&m_mutex);
-        m_frames.append(TaggedFrame{ frame, region });
+        m_frames.append(TaggedFrame{ image, region });
         m_totalAdded++;
         count = m_totalAdded;
     }
