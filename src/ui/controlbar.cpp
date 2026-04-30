@@ -193,6 +193,16 @@ void ControlBar::buildUi()
     layout->addWidget(m_demoButton);
 #endif
 
+    m_snapButton = new QPushButton("16:9", this);
+    m_snapButton->setToolTip("Snap capture region to 16:9 (or 9:16)");
+    m_snapButton->setStyleSheet(
+        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
+        " padding: 2px 6px; background: transparent; font-size: 11px; }"
+        "QPushButton:hover { border-color: #64748b; color: #e2e8f0; }"
+        "QPushButton:disabled { color: #475569; }");
+    connect(m_snapButton, &QPushButton::clicked, this, &ControlBar::snapAspectRequested);
+    layout->addWidget(m_snapButton);
+
     m_settingsButton = new QPushButton("⚙", this);
     m_settingsButton->setFixedWidth(28);
     m_settingsButton->setToolTip("Preferences");
@@ -266,6 +276,15 @@ void ControlBar::setOutputDir(const QString& dir)
     m_outputDir = dir;
 }
 
+void ControlBar::setFormat(sc::OutputFormat format)
+{
+    m_format = format;
+    const bool isVideo = (format != OutputFormat::Gif);
+    m_formatButton->setText(isVideo ? "MP4" : "GIF");
+    m_audioButton->setVisible(isVideo);
+    m_audioDeviceCombo->setVisible(isVideo && m_captureAudio);
+}
+
 void ControlBar::setAudioDeviceId(const QString& id)
 {
     if (!m_audioDeviceCombo)
@@ -328,6 +347,7 @@ void ControlBar::onStateChanged(sc::AppState state)
 void ControlBar::onRegionChanged(const sc::CaptureRegion& region)
 {
     m_dimensionsLabel->setText(region.dimensionsString());
+    m_snapButton->setText(region.rect.width() >= region.rect.height() ? "16:9" : "9:16");
     snapToRegion(region.rect);
 }
 
@@ -347,6 +367,7 @@ void ControlBar::updateUiForState(AppState state)
         m_formatButton->setEnabled(true);
         m_audioButton->setEnabled(true);
         m_audioDeviceCombo->setEnabled(true);
+        m_snapButton->setEnabled(true);
         break;
 
     case AppState::Recording:
@@ -359,6 +380,7 @@ void ControlBar::updateUiForState(AppState state)
         m_formatButton->setEnabled(false);
         m_audioButton->setEnabled(false);
         m_audioDeviceCombo->setEnabled(false);
+        m_snapButton->setEnabled(false);
         break;
 
     case AppState::Paused:
@@ -376,6 +398,7 @@ void ControlBar::updateUiForState(AppState state)
         m_formatButton->setEnabled(false);
         m_audioButton->setEnabled(false);
         m_audioDeviceCombo->setEnabled(false);
+        m_snapButton->setEnabled(false);
         break;
 
     default:

@@ -24,14 +24,16 @@ AppController::AppController(QObject* parent)
 {
     loadSettings();
 
-    // Default capture region: 800×450 centered on the primary screen
+    // If no saved rect, default to 800×450 centered on the primary screen.
     QScreen* primary = QGuiApplication::primaryScreen();
     if (primary) {
         m_region.screen = primary;
-        QRect available = primary->availableGeometry();
-        int x = available.x() + (available.width()  - 800) / 2;
-        int y = available.y() + (available.height() - 450) / 2;
-        m_region.rect = QRect(x, y, 800, 450);
+        if (!m_region.rect.isValid()) {
+            QRect available = primary->availableGeometry();
+            int x = available.x() + (available.width()  - 800) / 2;
+            int y = available.y() + (available.height() - 450) / 2;
+            m_region.rect = QRect(x, y, 800, 450);
+        }
     }
 }
 
@@ -61,10 +63,12 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::audioChangeRequested,       this, &AppController::onAudioChangeRequested);
     connect(m_controlBar, &ControlBar::audioDeviceChangeRequested, this, &AppController::onAudioDeviceChangeRequested);
     connect(m_controlBar, &ControlBar::outputDirChangeRequested,   this, &AppController::onOutputDirChangeRequested);
+    connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
 
     // Restore saved settings into the control bar UI.
     m_controlBar->setAudioDeviceId(m_settings.audioDeviceId);
     m_controlBar->setOutputDir(m_settings.outputDir);
+    m_controlBar->setFormat(m_settings.format);
 
     // Wire controller state → windows
     connect(this, &AppController::stateChanged,  m_captureWindow, &CaptureWindow::onStateChanged);
@@ -75,13 +79,24 @@ void AppController::start()
     // Wire capture window drag/resize → controller
     connect(m_captureWindow, &CaptureWindow::regionChanged, this, &AppController::onRegionChanged);
 
+    // Pre-position before show() so macOS doesn't lock in the constructor default.
+    m_captureWindow->setGeometry(m_region.rect);
+
     m_captureWindow->show();
     m_controlBar->show();
 
-    // Push initial state
+    const QRect targetRect = m_region.rect;
     emit stateChanged(m_state);
     emit regionChanged(m_region);
-    m_controlBar->snapToRegion(m_region.rect);
+    m_controlBar->snapToRegion(targetRect);
+
+    // Reapply after the event loop drains show()-related move/resize events,
+    // which on macOS can override the pre-show setGeometry call.
+    QTimer::singleShot(0, this, [this, targetRect]() {
+        m_region.rect = targetRect;
+        emit regionChanged(m_region);
+        m_controlBar->snapToRegion(targetRect);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +275,19 @@ void AppController::onOutputDirChangeRequested(const QString& dir)
         return;
     m_settings.outputDir = dir;
     saveSettings();
+}
+
+void AppController::onSnapAspectRequested()
+{
+    if (m_state != AppState::Idle)
+        return;
+    QRect r = m_region.rect;
+    // Landscape → 16:9; portrait/square → 9:16.
+    if (r.width() >= r.height())
+        r.setHeight(r.width() * 9 / 16);
+    else
+        r.setWidth(r.height() * 9 / 16);
+    onRegionChanged(r);
 }
 
 // ---------------------------------------------------------------------------

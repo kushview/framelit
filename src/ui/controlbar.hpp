@@ -31,6 +31,7 @@ public:
     // system default (index 0).  Does not emit audioDeviceChangeRequested.
     void setAudioDeviceId(const QString& id);
     void setOutputDir(const QString& dir);
+    void setFormat(sc::OutputFormat format);
 
     // When true the app's own windows are NOT excluded from the SCK capture,
     // so the capture frame / control bar appear in the recorded output.
@@ -45,6 +46,7 @@ signals:
     void audioChangeRequested(bool captureAudio);
     void audioDeviceChangeRequested(QString deviceId);
     void outputDirChangeRequested(QString dir);
+    void snapAspectRequested();
 
 public slots:
     void onStateChanged(sc::AppState state);
@@ -84,6 +86,7 @@ private:
     QPushButton* m_recordButton    = nullptr;
     QPushButton* m_pauseButton     = nullptr;
     QPushButton* m_stopButton      = nullptr;
+    QPushButton* m_snapButton      = nullptr;
     QPushButton* m_settingsButton  = nullptr;
     QPushButton* m_demoButton      = nullptr;
     QPushButton* m_closeButton     = nullptr;

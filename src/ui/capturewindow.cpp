@@ -76,7 +76,7 @@ CaptureWindow::CaptureWindow(QObject* /*controller*/, QWidget* parent)
         m_handles[i]->setZValue(2);
     }
 
-    setGeometry(100, 100, 800, 450);
+    setGeometry(0, 0, 800, 450);  // placeholder; AppController sets real position
     updateSceneGeometry();
 }
 
@@ -299,10 +299,18 @@ void CaptureWindow::mouseMoveEvent(QMouseEvent* event)
                                    m_dragZone == HitZone::CornerTR ||
                                    m_dragZone == HitZone::EdgeTop);
 
-        // Derive the constrained height from the current width, then fix.
-        int newW = r.width();
-        int newH = qMax(kMinDimension, int(newW / effectiveAspect));
-        newW     = qMax(kMinDimension, int(newH * effectiveAspect));
+        // Derive constrained dimensions. For top/bottom edge drags the user
+        // is moving in Y so drive from the new height; for left/right and
+        // corners drive from the new width.
+        int newW, newH;
+        if (m_dragZone == HitZone::EdgeTop || m_dragZone == HitZone::EdgeBottom) {
+            newH = qMax(kMinDimension, r.height());
+            newW = qMax(kMinDimension, int(newH * effectiveAspect));
+        } else {
+            newW = qMax(kMinDimension, r.width());
+            newH = qMax(kMinDimension, int(newW / effectiveAspect));
+            newW = qMax(kMinDimension, int(newH * effectiveAspect));
+        }
 
         if (anchorRight)
             r.setLeft(r.right() - newW);

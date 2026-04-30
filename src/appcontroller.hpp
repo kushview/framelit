@@ -137,6 +137,7 @@ public slots:
     void onAudioChangeRequested(bool captureAudio);
     void onAudioDeviceChangeRequested(const QString& deviceId);
     void onOutputDirChangeRequested(const QString& dir);
+    void onSnapAspectRequested();
 
 signals:
     void stateChanged(sc::AppState newState);
