@@ -1,6 +1,9 @@
 #include "qtscreenbackend.hpp"
 
+#include <QGuiApplication>
+#include <QCursor>
 #include <QMediaCaptureSession>
+#include <QPainter>
 #include <QScreen>
 #include <QScreenCapture>
 #include <QVideoFrame>
@@ -78,11 +81,31 @@ void QtScreenCaptureBackend::onVideoFrameChanged(const QVideoFrame& videoFrame)
 {
     if (!m_running) return;
 
-    // Convert immediately to release the platform buffer (on macOS this
-    // returns the CMSampleBuffer to ScreenCaptureKit's pool).
     QImage img = videoFrame.toImage();
-    if (!img.isNull())
-        emit frameArrived(img);
+    if (img.isNull())
+        return;
+
+    // Composite the system cursor onto the frame.
+#if 0
+    if (m_screen) {
+        const QPoint globalPos = QCursor::pos(m_screen);
+        const QRect screenRect = m_screen->geometry();
+        const qreal scaleX = img.width()  > 0 ? (qreal)img.width()  / screenRect.width()  : 1.0;
+        const qreal scaleY = img.height() > 0 ? (qreal)img.height() / screenRect.height() : 1.0;
+        const QPoint framePos(
+            qRound((globalPos.x() - screenRect.x()) * scaleX),
+            qRound((globalPos.y() - screenRect.y()) * scaleY)
+        );
+        const QPixmap cursorPix = QGuiApplication::primaryScreen()
+            ? QCursor(Qt::ArrowCursor).pixmap() : QPixmap();
+        if (!cursorPix.isNull() && img.rect().contains(framePos)) {
+            QPainter p(&img);
+            p.drawPixmap(framePos, cursorPix);
+        }
+    }
+#endif
+
+    emit frameArrived(img);
 }
 
 void QtScreenCaptureBackend::onCaptureError(int /*code*/, const QString& message)

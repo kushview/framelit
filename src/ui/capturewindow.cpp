@@ -16,6 +16,9 @@
 #ifdef Q_OS_LINUX
 #include "../platform/x11_window.hpp"
 #endif
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 namespace sc {
 
@@ -105,6 +108,15 @@ void CaptureWindow::onStateChanged(sc::AppState state)
 #endif
 #ifdef Q_OS_LINUX
     sc::setWindowClickThrough(winId(), passthrough);
+#endif
+#ifdef Q_OS_WIN
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+    if (passthrough)
+        exStyle |= WS_EX_TRANSPARENT;
+    else
+        exStyle &= ~WS_EX_TRANSPARENT;
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
 #endif
 
     // Update border/handle colors and handle visibility — no repaint needed;
@@ -315,6 +327,11 @@ void CaptureWindow::showEvent(QShowEvent* event)
     QTimer::singleShot(0, this, [wid]() {
         excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
         setWindowHidesOnDeactivate(reinterpret_cast<void*>(wid), false);
+    });
+#endif
+#ifdef Q_OS_WIN
+    QTimer::singleShot(0, this, [hwnd = reinterpret_cast<HWND>(winId())]() {
+        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
     });
 #endif
 }

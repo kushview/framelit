@@ -12,6 +12,9 @@
 #ifdef Q_OS_MACOS
 #include "../platform/macos_window.h"
 #endif
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 #define SC_USE_DEMO_MODE 0
 
@@ -47,6 +50,12 @@ ControlBar::ControlBar(CaptureWindow* captureWindow, QWidget* parent)
             snapToRegion(m_captureWindow->geometry());
     });
     m_snapTimer->start(16);
+
+#ifdef Q_OS_WIN
+    QTimer::singleShot(0, this, [hwnd = reinterpret_cast<HWND>(winId())]() {
+        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+    });
+#endif
 }
 
 bool ControlBar::demoMode() const
