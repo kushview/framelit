@@ -34,6 +34,7 @@ signals:
     void stopRequested();
     void pauseRequested();
     void resumeRequested();
+    void formatChangeRequested(sc::OutputFormat format);
 
 public slots:
     void onStateChanged(sc::AppState state);
@@ -67,12 +68,14 @@ private:
 
     QLabel*      m_statusLabel     = nullptr;
     QLabel*      m_dimensionsLabel = nullptr;
+    QPushButton* m_formatButton    = nullptr;
     QPushButton* m_recordButton    = nullptr;
     QPushButton* m_pauseButton     = nullptr;
     QPushButton* m_stopButton      = nullptr;
     QPushButton* m_demoButton      = nullptr;
     QPushButton* m_closeButton     = nullptr;
 
+    OutputFormat m_format = OutputFormat::Gif;
     AppState m_state = AppState::Idle;
 };
 

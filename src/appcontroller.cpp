@@ -3,6 +3,7 @@
 #include "capture/screencaptureworker.hpp"
 #include "recordingstrategy.hpp"
 #include "bufferedstrategy.hpp"
+#include "streamingstrategy.hpp"
 #include "ui/capturewindow.hpp"
 #include "ui/controlbar.hpp"
 
@@ -52,10 +53,11 @@ void AppController::start()
     m_controlBar    = new ControlBar(m_captureWindow);
 
     // Wire control bar buttons → controller slots
-    connect(m_controlBar, &ControlBar::startRequested,  this, &AppController::onStartRequested);
-    connect(m_controlBar, &ControlBar::stopRequested,   this, &AppController::onStopRequested);
-    connect(m_controlBar, &ControlBar::pauseRequested,  this, &AppController::onPauseRequested);
-    connect(m_controlBar, &ControlBar::resumeRequested, this, &AppController::onResumeRequested);
+    connect(m_controlBar, &ControlBar::startRequested,        this, &AppController::onStartRequested);
+    connect(m_controlBar, &ControlBar::stopRequested,           this, &AppController::onStopRequested);
+    connect(m_controlBar, &ControlBar::pauseRequested,          this, &AppController::onPauseRequested);
+    connect(m_controlBar, &ControlBar::resumeRequested,         this, &AppController::onResumeRequested);
+    connect(m_controlBar, &ControlBar::formatChangeRequested,   this, &AppController::onFormatChangeRequested);
 
     // Wire controller state → windows
     connect(this, &AppController::stateChanged,  m_captureWindow, &CaptureWindow::onStateChanged);
@@ -85,8 +87,10 @@ void AppController::onStartRequested()
         return;
 
     // Create strategy before the worker so it's ready to receive frames.
-    // Currently only BufferedStrategy (GIF); StreamingStrategy added Phase 2.
-    m_strategy = new BufferedStrategy(m_settings, this);
+    if (m_settings.format == OutputFormat::Gif)
+        m_strategy = new BufferedStrategy(m_settings, this);
+    else
+        m_strategy = new StreamingStrategy(m_settings, this);
     connect(m_strategy, &RecordingStrategy::encodingProgress,
             this, &AppController::onEncodingProgress);
     connect(m_strategy, &RecordingStrategy::encodingFinished,
@@ -217,6 +221,14 @@ void AppController::onEncodingFailed(const QString& reason)
         reason
     );
     setState(AppState::Idle);
+}
+
+void AppController::onFormatChangeRequested(OutputFormat format)
+{
+    if (m_state != AppState::Idle)
+        return; // ignore changes mid-recording
+    m_settings.format = format;
+    saveSettings();
 }
 
 // ---------------------------------------------------------------------------

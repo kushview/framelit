@@ -127,6 +127,7 @@ public slots:
     void onEncodingProgress(float fraction);
     void onEncodingFinished(const QString& filePath);
     void onEncodingFailed(const QString& reason);
+    void onFormatChangeRequested(sc::OutputFormat format);
 
 signals:
     void stateChanged(sc::AppState newState);

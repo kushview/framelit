@@ -241,10 +241,25 @@ void SckScreenCaptureBackend::startCapture()
             // ----------------------------------------------------------------
             // Stream configuration — full physical resolution, BGRA pixels.
             // ----------------------------------------------------------------
+            // CGDisplayPixelsWide/High returns the logical mode size on HiDPI
+            // displays — the same number QScreen::geometry() reports in points.
+            // CGDisplayModeGetPixelWidth/Height always returns the true physical
+            // backing pixel count (e.g. 3024 instead of 1512 on a 2x Retina Mac).
+            // Using the physical size here ensures cropToRegion's scale factor
+            // is >1 on Retina displays, producing a full-DPI crop.
+            CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(display.displayID);
+            size_t physW = currentMode ? CGDisplayModeGetPixelWidth(currentMode)
+                                       : (size_t)CGDisplayPixelsWide(display.displayID);
+            size_t physH = currentMode ? CGDisplayModeGetPixelHeight(currentMode)
+                                       : (size_t)CGDisplayPixelsHigh(display.displayID);
+            if (currentMode) CGDisplayModeRelease(currentMode);
+
+            qDebug("[SCK] display physical pixels: %zux%zu", physW, physH);
+
             SCStreamConfiguration* config = [[SCStreamConfiguration alloc] init];
             config.pixelFormat = kCVPixelFormatType_32BGRA;
-            config.width       = (size_t)CGDisplayPixelsWide(display.displayID);
-            config.height      = (size_t)CGDisplayPixelsHigh(display.displayID);
+            config.width       = physW;
+            config.height      = physH;
             config.showsCursor = YES;
             // minimumFrameInterval: let SCK pace delivery at the target fps.
             config.minimumFrameInterval = CMTimeMake(1, fps);

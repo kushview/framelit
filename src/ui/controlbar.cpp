@@ -85,6 +85,20 @@ void ControlBar::buildUi()
 
     layout->addStretch();
 
+    m_formatButton = new QPushButton("GIF", this);
+    m_formatButton->setToolTip("Toggle output format: GIF or MP4");
+    m_formatButton->setStyleSheet(
+        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 8px; background: transparent; }"
+        "QPushButton:hover { border-color: #64748b; color: #e2e8f0; }");
+    connect(m_formatButton, &QPushButton::clicked, this, [this]() {
+        if (m_state != AppState::Idle)
+            return;
+        m_format = (m_format == OutputFormat::Gif) ? OutputFormat::Mp4 : OutputFormat::Gif;
+        m_formatButton->setText(m_format == OutputFormat::Gif ? "GIF" : "MP4");
+        emit formatChangeRequested(m_format);
+    });
+    layout->addWidget(m_formatButton);
+
     m_recordButton = new QPushButton("Record", this);
     m_recordButton->setObjectName("recordBtn");
     connect(m_recordButton, &QPushButton::clicked, this, &ControlBar::startRequested);
@@ -201,6 +215,7 @@ void ControlBar::updateUiForState(AppState state)
         m_recordButton->setVisible(true);
         m_pauseButton->setVisible(false);
         m_stopButton->setVisible(false);
+        m_formatButton->setEnabled(true);
         break;
 
     case AppState::Recording:
@@ -210,6 +225,7 @@ void ControlBar::updateUiForState(AppState state)
         m_pauseButton->setText("Pause");
         m_pauseButton->setVisible(true);
         m_stopButton->setVisible(true);
+        m_formatButton->setEnabled(false);
         break;
 
     case AppState::Paused:
@@ -224,6 +240,7 @@ void ControlBar::updateUiForState(AppState state)
         m_recordButton->setVisible(false);
         m_pauseButton->setVisible(false);
         m_stopButton->setVisible(false);
+        m_formatButton->setEnabled(false);
         break;
 
     default:

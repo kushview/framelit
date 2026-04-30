@@ -30,9 +30,11 @@ set(SOURCES
     src/recorderworker.cpp
     src/recordingstrategy.hpp
     src/bufferedstrategy.cpp
+    src/streamingstrategy.cpp
     src/capture/screencaptureworker.cpp
     src/capture/framestore.cpp
     src/encoding/gifencoder.cpp
+    src/encoding/videoencoder.cpp
     src/ui/capturewindow.cpp
     src/ui/controlbar.cpp
     src/platform/screencapturebackend.hpp
