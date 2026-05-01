@@ -12,6 +12,7 @@ class FrameStore;
 struct GifExportSettings {
     int outputFps = 10;    // target playback FPS (≤ recording FPS)
     int maxWidth  = 800;   // 0 = no scaling
+    bool hiDpi    = false; // 2× output: 1600×900 instead of 800×450
     QualityPreset quality = QualityPreset::Medium;
 };
 

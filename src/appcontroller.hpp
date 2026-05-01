@@ -67,6 +67,7 @@ struct RecordingSettings {
     bool showClicks      = true;
     bool countdown       = false;
     bool captureAudio    = false;  // mic audio muxed into MP4; no effect on GIF
+    bool hiDpi           = false;  // 2× output resolution (1600×900 instead of 800×450)
     QString audioDeviceId;          // empty = system default
     QString outputDir;
 
@@ -83,6 +84,7 @@ struct RecordingSettings {
         s.showClicks  = qs.value("showClicks",  s.showClicks).toBool();
         s.countdown   = qs.value("countdown",   s.countdown).toBool();
         s.captureAudio  = qs.value("captureAudio", s.captureAudio).toBool();
+        s.hiDpi         = qs.value("hiDpi",         s.hiDpi).toBool();
         s.audioDeviceId = qs.value("audioDeviceId", s.audioDeviceId).toString();
         s.outputDir  = qs.value("outputDir",
             QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
@@ -98,6 +100,7 @@ struct RecordingSettings {
         qs.setValue("showClicks",  showClicks);
         qs.setValue("countdown",   countdown);
         qs.setValue("captureAudio",  captureAudio);
+        qs.setValue("hiDpi",         hiDpi);
         qs.setValue("audioDeviceId", audioDeviceId);
         qs.setValue("outputDir",     outputDir);
     }
@@ -139,6 +142,7 @@ public slots:
     void onEncodingFailed(const QString& reason);
     void onFormatChangeRequested(sc::OutputFormat format);
     void onAudioChangeRequested(bool captureAudio);
+    void onHiDpiChangeRequested(bool hiDpi);
     void onAudioDeviceChangeRequested(const QString& deviceId);
     void onOutputDirChangeRequested(const QString& dir);
     void onSnapAspectRequested();

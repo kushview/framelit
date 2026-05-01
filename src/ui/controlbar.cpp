@@ -193,6 +193,20 @@ void ControlBar::buildUi()
     layout->addWidget(m_demoButton);
 #endif
 
+    m_hiDpiButton = new QPushButton("2×", this);
+    m_hiDpiButton->setCheckable(true);
+    m_hiDpiButton->setChecked(false);
+    m_hiDpiButton->setToolTip("HiDPI: output at 1600×900 instead of 800×450");
+    m_hiDpiButton->setStyleSheet(
+        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 6px; background: transparent; font-size: 11px; }"
+        "QPushButton:checked { color: #e2e8f0; border-color: #60a5fa; }"
+        "QPushButton:hover { border-color: #64748b; }");
+    connect(m_hiDpiButton, &QPushButton::toggled, this, [this](bool on) {
+        m_hiDpi = on;
+        emit hiDpiChangeRequested(on);
+    });
+    layout->addWidget(m_hiDpiButton);
+
     m_snapButton = new QPushButton("16:9", this);
     m_snapButton->setToolTip("Snap capture region to 16:9 (or 9:16)");
     m_snapButton->setStyleSheet(
@@ -269,6 +283,13 @@ void ControlBar::buildUi()
     grip->setAttribute(Qt::WA_TransparentForMouseEvents); // bar handles the events
     layout->addWidget(grip);
     layout->setContentsMargins(8, 0, 0, 0); // remove right margin; grip provides it
+}
+
+void ControlBar::setHiDpi(bool hiDpi)
+{
+    m_hiDpi = hiDpi;
+    if (m_hiDpiButton)
+        m_hiDpiButton->setChecked(hiDpi);
 }
 
 void ControlBar::setOutputDir(const QString& dir)

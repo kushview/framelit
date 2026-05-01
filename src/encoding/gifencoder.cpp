@@ -74,34 +74,17 @@ void GifEncoder::encode()
 
     // Determine output dimensions from the first frame — the GIF logical
     // screen descriptor must be written once with fixed dimensions.
-    const TaggedFrame& firstTagged = m_store->frameAt(0);
-    QImage firstImg = firstTagged.image;
-    if (firstImg.isNull()) {
+    if (m_store->frameAt(0).image.isNull()) {
         emit failed(QStringLiteral("First frame could not be decoded."));
         return;
     }
 
-    const QRect firstCrop = computeCropRect(firstTagged, firstImg);
-    // Output dimensions in pixels. The crop rect is already in the frame's
-    // native coordinate space (logical or physical depending on backend), so
-    // we divide by the actual measured scale to always output logical-size GIFs.
-    const QRect screenLogical0 = firstTagged.region.screen
-        ? firstTagged.region.screen->geometry()
-        : QRect(0, 0, firstImg.width(), firstImg.height());
-    const qreal scaleX0 = screenLogical0.width()  > 0
-        ? (qreal)firstImg.width()  / screenLogical0.width()  : 1.0;
-    int outW = qRound(firstCrop.width()  / scaleX0);
-    int outH = qRound(firstCrop.height() / scaleX0);  // uniform scale; use scaleX0
+    // Fixed output size: 800×450 (16:9), or 1600×900 in HiDPI mode.
+    // The per-frame loop crops to the capture region and scales to this size.
+    const int outW = m_gifSettings.hiDpi ? 1600 : 800;
+    const int outH = m_gifSettings.hiDpi ?  900 : 450;
 
-    qDebug("[GIF] source frame: %dx%d  crop: %dx%d+%d+%d  scale: %.2f  out: %dx%d",
-           firstImg.width(), firstImg.height(),
-           firstCrop.width(), firstCrop.height(), firstCrop.x(), firstCrop.y(),
-           scaleX0, outW, outH);
-
-    if (m_gifSettings.maxWidth > 0 && outW > m_gifSettings.maxWidth) {
-        outH = outH * m_gifSettings.maxWidth / outW;
-        outW = m_gifSettings.maxWidth;
-    }
+    qDebug("[GIF] fixed output: %dx%d%s", outW, outH, m_gifSettings.hiDpi ? " (HiDPI)" : "");
 
     GifFileType* gif = EGifOpenFileName(pathBytes.constData(), false, &gifError);
     if (!gif) {

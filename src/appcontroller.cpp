@@ -68,6 +68,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::resumeRequested,         this, &AppController::onResumeRequested);
     connect(m_controlBar, &ControlBar::formatChangeRequested,   this, &AppController::onFormatChangeRequested);
     connect(m_controlBar, &ControlBar::audioChangeRequested,       this, &AppController::onAudioChangeRequested);
+    connect(m_controlBar, &ControlBar::hiDpiChangeRequested,       this, &AppController::onHiDpiChangeRequested);
     connect(m_controlBar, &ControlBar::audioDeviceChangeRequested, this, &AppController::onAudioDeviceChangeRequested);
     connect(m_controlBar, &ControlBar::outputDirChangeRequested,   this, &AppController::onOutputDirChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
@@ -76,6 +77,7 @@ void AppController::start()
     m_controlBar->setAudioDeviceId(m_settings.audioDeviceId);
     m_controlBar->setOutputDir(m_settings.outputDir);
     m_controlBar->setFormat(m_settings.format);
+    m_controlBar->setHiDpi(m_settings.hiDpi);
 
     // Wire controller state → windows
     connect(this, &AppController::stateChanged,  m_captureWindow, &CaptureWindow::onStateChanged);
@@ -277,6 +279,14 @@ void AppController::onAudioChangeRequested(bool captureAudio)
     if (m_state != AppState::Idle)
         return;
     m_settings.captureAudio = captureAudio;
+    saveSettings();
+}
+
+void AppController::onHiDpiChangeRequested(bool hiDpi)
+{
+    if (m_state != AppState::Idle)
+        return;
+    m_settings.hiDpi = hiDpi;
     saveSettings();
 }
 

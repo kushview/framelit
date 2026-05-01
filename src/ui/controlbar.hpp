@@ -32,6 +32,7 @@ public:
     void setAudioDeviceId(const QString& id);
     void setOutputDir(const QString& dir);
     void setFormat(sc::OutputFormat format);
+    void setHiDpi(bool hiDpi);
 
     // When true the app's own windows are NOT excluded from the SCK capture,
     // so the capture frame / control bar appear in the recorded output.
@@ -45,6 +46,7 @@ signals:
     void formatChangeRequested(sc::OutputFormat format);
     void audioChangeRequested(bool captureAudio);
     void audioDeviceChangeRequested(QString deviceId);
+    void hiDpiChangeRequested(bool hiDpi);
     void outputDirChangeRequested(QString dir);
     void snapAspectRequested();
 
@@ -88,11 +90,13 @@ private:
     QPushButton* m_stopButton      = nullptr;
     QPushButton* m_snapButton      = nullptr;
     QPushButton* m_settingsButton  = nullptr;
+    QPushButton* m_hiDpiButton     = nullptr;
     QPushButton* m_demoButton      = nullptr;
     QPushButton* m_closeButton     = nullptr;
 
     OutputFormat m_format      = OutputFormat::Gif;
     bool         m_captureAudio = false;
+    bool         m_hiDpi        = false;
     AppState m_state = AppState::Idle;
     QString      m_outputDir;
 };
