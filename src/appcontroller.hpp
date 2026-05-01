@@ -124,6 +124,8 @@ class CaptureWindow;
 class ControlBar;
 class RecorderWorker;
 class RecordingStrategy;
+class SystemTray;
+class Actions;
 
 class AppController : public QObject {
     Q_OBJECT
@@ -182,6 +184,9 @@ private:
     void applySettingsToUI();
     void applyResizeDelta(int delta);
     void updateFollowTimer();  // start/stop m_followTimer based on state + flag
+    void setUiVisible(bool visible);
+    void toggleUiVisible();
+    void syncActions();  // calls m_actions->sync() with current state
 
     AppState m_state = AppState::Idle;
     CaptureRegion m_region;
@@ -197,6 +202,8 @@ private:
     QThread*           m_workerThread   = nullptr;
     RecordingStrategy* m_strategy       = nullptr;  // owned; created per recording
     QTimer*            m_followTimer    = nullptr;
+    SystemTray*        m_tray           = nullptr;
+    Actions*        m_actions        = nullptr;
 
 #ifdef Q_OS_MACOS
     GlobakHotkeys* m_hotkeyManager = nullptr;

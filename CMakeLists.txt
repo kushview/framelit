@@ -37,6 +37,8 @@ set(SOURCES
     src/encoding/videoencoder.cpp
     src/ui/capturewindow.cpp
     src/ui/controlbar.cpp
+    src/ui/systemtray.cpp
+    src/ui/actions.cpp
     src/platform/screencapturebackend.hpp
 )
 

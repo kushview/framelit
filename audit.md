@@ -1,4 +1,4 @@
-# Architectural Audit — screen-capture-qt
+# Architectural Audit — Framelit
 
 _Audited: 2026-05-01 · Re-audited: 2026-05-01 (outputsize branch)_
 

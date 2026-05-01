@@ -16,6 +16,9 @@
 #endif
 
 #include <QGuiApplication>
+#include "ui/systemtray.hpp"
+#include "ui/actions.hpp"
+#include <QApplication>
 #include <QMessageBox>
 #include <QScreen>
 #include <QThread>
@@ -110,6 +113,27 @@ void AppController::start()
     m_captureWindow->show();
     m_controlBar->show();
 
+    if (SystemTray::isAvailable()) {
+        m_actions = new Actions(this);
+        connect(m_actions, &Actions::recordRequested,          this, &AppController::onStartRequested);
+        connect(m_actions, &Actions::pauseResumeRequested, this, [this]() {
+            if (m_state == AppState::Recording) onPauseRequested();
+            else if (m_state == AppState::Paused) onResumeRequested();
+        });
+        connect(m_actions, &Actions::stopRequested,            this, &AppController::onStopRequested);
+        connect(m_actions, &Actions::toggleUiRequested,        this, &AppController::toggleUiVisible);
+        connect(m_actions, &Actions::formatChangeRequested,    this, &AppController::onFormatChangeRequested);
+        connect(m_actions, &Actions::audioChangeRequested,     this, &AppController::onAudioChangeRequested);
+        connect(m_actions, &Actions::hiDpiChangeRequested,     this, &AppController::onHiDpiChangeRequested);
+        connect(m_actions, &Actions::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
+        connect(m_actions, &Actions::snapAspectRequested,      this, &AppController::onSnapAspectRequested);
+        connect(m_actions, &Actions::quitRequested,            []() { QApplication::quit(); });
+
+        m_tray = new SystemTray(m_actions, this);
+        m_tray->show();
+        syncActions();
+    }
+
     const QRect targetRect = m_region.rect;
     emit stateChanged(m_state);
     emit regionChanged(m_region);
@@ -122,6 +146,41 @@ void AppController::start()
         emit regionChanged(m_region);
         m_controlBar->snapToRegion(targetRect);
     });
+}
+
+void AppController::syncActions()
+{
+    if (!m_actions || !m_captureWindow || !m_controlBar)
+        return;
+    m_actions->sync(m_state, m_settings, m_followMouse,
+                    m_captureWindow->isVisible() && m_controlBar->isVisible());
+}
+
+void AppController::setUiVisible(bool visible)
+{
+    if (!m_captureWindow || !m_controlBar)
+        return;
+
+    if (visible) {
+        m_captureWindow->show();
+        m_controlBar->show();
+        m_controlBar->snapToRegion(m_region.rect);
+        m_captureWindow->raise();
+        m_controlBar->raise();
+    } else {
+        m_controlBar->hide();
+        m_captureWindow->hide();
+    }
+
+    syncActions();
+}
+
+void AppController::toggleUiVisible()
+{
+    if (!m_captureWindow || !m_controlBar)
+        return;
+    const bool visible = m_captureWindow->isVisible() && m_controlBar->isVisible();
+    setUiVisible(!visible);
 }
 
 // ---------------------------------------------------------------------------
@@ -278,26 +337,41 @@ void AppController::onEncodingFailed(const QString& reason)
 
 void AppController::onFormatChangeRequested(OutputFormat format)
 {
-    if (m_state != AppState::Idle)
+    if (m_state != AppState::Idle) {
+        syncActions();
         return;
+    }
     m_settings.format = format;
+    if (m_controlBar)
+        m_controlBar->setFormat(m_settings.format);
     saveSettings();
+    syncActions();
 }
 
 void AppController::onAudioChangeRequested(bool captureAudio)
 {
-    if (m_state != AppState::Idle)
+    if (m_state != AppState::Idle) {
+        syncActions();
         return;
+    }
     m_settings.captureAudio = captureAudio;
+    if (m_controlBar)
+        m_controlBar->setCaptureAudio(m_settings.captureAudio);
     saveSettings();
+    syncActions();
 }
 
 void AppController::onHiDpiChangeRequested(bool hiDpi)
 {
-    if (m_state != AppState::Idle)
+    if (m_state != AppState::Idle) {
+        syncActions();
         return;
+    }
     m_settings.hiDpi = hiDpi;
+    if (m_controlBar)
+        m_controlBar->setHiDpi(m_settings.hiDpi);
     saveSettings();
+    syncActions();
 }
 
 void AppController::onAudioDeviceChangeRequested(const QString& deviceId)
@@ -390,9 +464,12 @@ void AppController::updateFollowTimer()
 void AppController::onFollowMouseChangeRequested(bool enabled)
 {
     m_followMouse = enabled;
+    if (m_controlBar)
+        m_controlBar->setFollowMouse(enabled);
     qDebug("[follow-mouse] enabled=%d state=%d", enabled, int(m_state));
     updateFollowTimer();
     qDebug("[follow-mouse] timer active=%d", m_followTimer->isActive());
+    syncActions();
 }
 
 void AppController::onFollowMouseToggleRequested()
@@ -487,6 +564,7 @@ void AppController::setState(AppState s)
     m_state = s;
     emit stateChanged(m_state);
     updateFollowTimer();
+    syncActions();
 }
 
 void AppController::applySettingsToUI()

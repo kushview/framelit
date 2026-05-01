@@ -29,8 +29,38 @@ Two always-on-top windows:
 
 1. **CaptureWindow** — transparent frameless overlay; handles drag/resize; click-through while recording
 2. **ControlBar** — dark opaque bar docked below the capture rect; polls `CaptureWindow::geometry()` via a 16ms `QTimer` to stay snapped (no signals needed)
+3. **SystemTray** — owns the `QSystemTrayIcon`, its `QMenu`, and every `QAction` inside it; `AppController` only connects signals and calls `sync()`
 
-`AppController` owns both windows and the state machine (`AppState` enum). Workers for recording and encoding run on `QThread`s and communicate back via signals.
+`AppController` owns all three UI components and the state machine (`AppState` enum). Workers for recording and encoding run on `QThread`s and communicate back via signals.
+
+## Qt GUI Class Design Rules
+
+These apply to every UI component (`ControlBar`, `SystemTray`, future panels, etc.):
+
+- **One owner, one concern.** A class that owns a widget also owns every action, menu, and sub-widget inside it. No member pointers to internal actions should leak into other classes.
+- **Push, don't pull.** Controllers push state into UI components via a single `sync(state, settings, ...)` method. UI components never read from the controller directly.
+- **Signals out, slots in.** UI components emit coarse-grained intent signals (`recordRequested`, `formatChangeRequested`). Controllers map those to handler slots. UI components never call controller methods directly.
+- **`QSignalBlocker` for programmatic state.** Always use `QSignalBlocker` before setting checked/value on a widget to avoid re-entrancy loops during a `sync()` call.
+- **No action/menu state in the controller.** If a controller has more than one `QAction*` member, it is a code smell — move those into a dedicated UI class.
+- **`src/ui/` is the only subdirectory.** New UI classes go there. Non-UI helpers stay flat in `src/`.
+
+## Shared Actions — `Actions`
+
+`Actions` is the central `QAction` registry. It owns every `QAction` in the application and exposes them as plain public pointers:
+
+```cpp
+actions->record;       // add to any menu or toolbar
+actions->followMouse;  // same object, any surface
+```
+
+**The key property:** calling `setEnabled(false)` or `setChecked(true)` on one `QAction*` object updates *every* menu and toolbar that holds it simultaneously. No per-surface sync loop is needed.
+
+Pattern:
+1. `AppController` creates `Actions`, connects its signals to handler slots, and calls `m_actions->sync(state, settings, ...)` after any change.
+2. UI surfaces (`SystemTray`, future toolbars) receive `Actions*` in their constructor and insert the shared pointers into their menus/toolbars via `menu->addAction(actions->record)`.
+3. `Actions::sync()` updates `setEnabled` / `setChecked` / `setText` — Qt propagates to all surfaces automatically.
+
+This is the idiomatic Qt pattern for action sharing (same model Qt Creator uses internally).
 
 ## Compositing
 
