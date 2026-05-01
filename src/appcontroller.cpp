@@ -79,13 +79,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
 
-    // Restore saved settings into the control bar UI.
-    m_controlBar->setAudioDeviceId(m_settings.audioDeviceId);
-    m_controlBar->setOutputDir(m_settings.outputDir);
-    m_controlBar->setOutputSize(m_settings.outputSize);
-    m_controlBar->setGrowStep(m_settings.growStep);
-    m_controlBar->setFormat(m_settings.format);
-    m_controlBar->setHiDpi(m_settings.hiDpi);
+    applySettingsToUI();
 
     // Wire controller state → windows
     connect(this, &AppController::stateChanged,  m_captureWindow, &CaptureWindow::onStateChanged);
@@ -104,6 +98,7 @@ void AppController::start()
     connect(m_hotkeyManager, &GlobalInputManager::growRequested,              this, &AppController::onGrowRequested);
     connect(m_hotkeyManager, &GlobalInputManager::shrinkRequested,            this, &AppController::onShrinkRequested);
     connect(m_hotkeyManager, &GlobalInputManager::followMouseToggleRequested, this, &AppController::onFollowMouseToggleRequested);
+    connect(m_hotkeyManager, &GlobalInputManager::recordToggleRequested,      this, &AppController::onRecordToggleRequested);
 #endif
 
     // Follow-mouse pan timer — runs at 60 Hz during recording when enabled.
@@ -406,6 +401,14 @@ void AppController::onFollowMouseToggleRequested()
         m_controlBar->setFollowMouse(m_followMouse);
 }
 
+void AppController::onRecordToggleRequested()
+{
+    if (m_state == AppState::Recording || m_state == AppState::Paused)
+        onStopRequested();
+    else if (m_state == AppState::Idle || m_state == AppState::Positioning)
+        onStartRequested();
+}
+
 void AppController::onFollowMouseTick()
 {
     const QPoint cursor = QCursor::pos();
@@ -483,6 +486,17 @@ void AppController::setState(AppState s)
     m_state = s;
     emit stateChanged(m_state);
     updateFollowTimer();
+}
+
+void AppController::applySettingsToUI()
+{
+    m_controlBar->setAudioDeviceId(m_settings.audioDeviceId);
+    m_controlBar->setOutputDir(m_settings.outputDir);
+    m_controlBar->setOutputSize(m_settings.outputSize);
+    m_controlBar->setGrowStep(m_settings.growStep);
+    m_controlBar->setFormat(m_settings.format);
+    m_controlBar->setHiDpi(m_settings.hiDpi);
+    m_controlBar->setCaptureAudio(m_settings.captureAudio);
 }
 
 void AppController::loadSettings()

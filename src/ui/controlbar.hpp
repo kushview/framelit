@@ -36,6 +36,7 @@ public:
     void setGrowStep(int step);
     void setFormat(sc::OutputFormat format);
     void setHiDpi(bool hiDpi);
+    void setCaptureAudio(bool on);
     void setFollowMouse(bool enabled);
 
     // When true the app's own windows are NOT excluded from the SCK capture,

@@ -159,6 +159,7 @@ public slots:
     void onGrowStepChangeRequested(int step);
     void onFollowMouseChangeRequested(bool enabled);
     void onFollowMouseToggleRequested();
+    void onRecordToggleRequested();
     void onFollowMouseTick();
     void onSnapAspectRequested();
     void onGrowRequested();
@@ -178,6 +179,7 @@ private:
     // Takes ownership of both worker and the thread.
     void attachWorker(RecorderWorker* worker);
     void teardownWorker();
+    void applySettingsToUI();
     void applyResizeDelta(int delta);
     void updateFollowTimer();  // start/stop m_followTimer based on state + flag
 

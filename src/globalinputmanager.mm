@@ -12,6 +12,7 @@ namespace sc {
 static constexpr CGKeyCode kKeyCodeEqual = 0x18; // = and + (with shift)
 static constexpr CGKeyCode kKeyCodeMinus = 0x1B; // - and _ (with shift)
 static constexpr CGKeyCode kKeyCodeF     = 0x03; // F — toggle follow-mouse
+static constexpr CGKeyCode kKeyCodeSpace = 0x31; // Space — toggle record
 
 static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
                                    CGEventType    type,
@@ -19,20 +20,30 @@ static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
                                    void*          userInfo)
 {
     if (type == kCGEventKeyDown) {
-        const CGEventFlags flags    = CGEventGetFlags(event);
-        const CGEventFlags required = kCGEventFlagMaskCommand | kCGEventFlagMaskShift;
-        if ((flags & required) != required)
-            return event;
+        const CGEventFlags flags = CGEventGetFlags(event);
+        const bool cmd   = (flags & kCGEventFlagMaskCommand) != 0;
+        const bool shift = (flags & kCGEventFlagMaskShift)   != 0;
+        const bool alt   = (flags & kCGEventFlagMaskAlternate) != 0;
+        const bool ctrl  = (flags & kCGEventFlagMaskControl)  != 0;
 
         auto keyCode = static_cast<CGKeyCode>(
             CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
         auto* mgr = static_cast<GlobalInputManager*>(userInfo);
-        if (keyCode == kKeyCodeEqual)
-            QMetaObject::invokeMethod(mgr, "growRequested", Qt::QueuedConnection);
-        else if (keyCode == kKeyCodeMinus)
-            QMetaObject::invokeMethod(mgr, "shrinkRequested", Qt::QueuedConnection);
-        else if (keyCode == kKeyCodeF)
-            QMetaObject::invokeMethod(mgr, "followMouseToggleRequested", Qt::QueuedConnection);
+
+        // Cmd+Shift+= / Cmd+Shift+- — grow/shrink
+        if (cmd && shift && !alt && !ctrl) {
+            if (keyCode == kKeyCodeEqual)
+                QMetaObject::invokeMethod(mgr, "growRequested", Qt::QueuedConnection);
+            else if (keyCode == kKeyCodeMinus)
+                QMetaObject::invokeMethod(mgr, "shrinkRequested", Qt::QueuedConnection);
+            else if (keyCode == kKeyCodeF)
+                QMetaObject::invokeMethod(mgr, "followMouseToggleRequested", Qt::QueuedConnection);
+        }
+        // Cmd+Space — toggle recording; consume the event so Spotlight doesn't open.
+        else if (cmd && !shift && !alt && !ctrl && keyCode == kKeyCodeSpace) {
+            QMetaObject::invokeMethod(mgr, "recordToggleRequested", Qt::QueuedConnection);
+            return nullptr; // consumed
+        }
     }
     return event; // pass all events through — listen-only
 }
@@ -46,9 +57,9 @@ GlobalInputManager::GlobalInputManager(QObject* parent)
     }
 
     CFMachPortRef tap = CGEventTapCreate(
-        kCGSessionEventTap,
+        kCGHIDEventTap,
         kCGHeadInsertEventTap,
-        kCGEventTapOptionListenOnly,
+        kCGEventTapOptionDefault,
         CGEventMaskBit(kCGEventKeyDown),
         eventTapCallback,
         this

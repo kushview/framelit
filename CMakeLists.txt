@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(ScreenCaptureQt VERSION 0.1.0 LANGUAGES C CXX)
+project(framelit VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -81,12 +81,12 @@ if(UNIX AND NOT APPLE)
     list(APPEND HEADERS src/platform/x11_window.hpp)
 endif()
 
-qt_add_executable(screen-capture-qt
+qt_add_executable(framelit
     ${SOURCES}
     ${HEADERS}
 )
 
-target_include_directories(screen-capture-qt PRIVATE src)
+target_include_directories(framelit PRIVATE src)
 
 # ---------------------------------------------------------------------------
 # giflib (Homebrew preferred; FetchContent fallback)
@@ -117,9 +117,9 @@ else()
     set(GIFLIB_INCLUDE_DIR "${giflib_SOURCE_DIR}")
 endif()
 
-target_include_directories(screen-capture-qt PRIVATE ${GIFLIB_INCLUDE_DIR})
+target_include_directories(framelit PRIVATE ${GIFLIB_INCLUDE_DIR})
 
-target_link_libraries(screen-capture-qt PRIVATE
+target_link_libraries(framelit PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -131,7 +131,7 @@ target_link_libraries(screen-capture-qt PRIVATE
 )
 
 if(APPLE)
-    target_link_libraries(screen-capture-qt PRIVATE
+    target_link_libraries(framelit PRIVATE
         "-framework AppKit"
         "-framework ScreenCaptureKit"
         "-framework CoreMedia"
@@ -142,23 +142,30 @@ endif()
 
 if(UNIX AND NOT APPLE)
     # XShape extension (libXext) for real click-through on X11
-    target_link_libraries(screen-capture-qt PRIVATE Xext X11)
+    target_link_libraries(framelit PRIVATE Xext X11)
+endif()
+
+# Per-platform output name: Framelit on macOS/Windows, framelit on Linux.
+if(APPLE OR WIN32)
+    set_target_properties(framelit PROPERTIES OUTPUT_NAME "Framelit")
+else()
+    set_target_properties(framelit PROPERTIES OUTPUT_NAME "framelit")
 endif()
 
 # macOS bundle settings
 if(APPLE)
-    set_target_properties(screen-capture-qt PROPERTIES
+    set_target_properties(framelit PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.sc.screen-capture-qt"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.sc.framelit"
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
     )
     # Ad-hoc sign with screen recording entitlement so TCC grants work.
-    add_custom_command(TARGET screen-capture-qt POST_BUILD
+    add_custom_command(TARGET framelit POST_BUILD
         COMMAND codesign --force --deep
                 --sign "ED7BA643A218B65A4A1068D40A77E73EFA30ED56"
                 --entitlements "${CMAKE_SOURCE_DIR}/entitlements.plist"
-                "$<TARGET_BUNDLE_DIR:screen-capture-qt>"
+                "$<TARGET_BUNDLE_DIR:framelit>"
         COMMENT "Signing with Developer ID"
     )
 endif()

@@ -346,6 +346,15 @@ void ControlBar::setHiDpi(bool hiDpi)
         m_hiDpiButton->setChecked(hiDpi);
 }
 
+void ControlBar::setCaptureAudio(bool on)
+{
+    m_captureAudio = on;
+    if (m_audioButton)
+        m_audioButton->setChecked(on);
+    if (m_audioDeviceCombo)
+        m_audioDeviceCombo->setVisible(on && m_format != OutputFormat::Gif);
+}
+
 void ControlBar::setFollowMouse(bool enabled)
 {
     m_followMouse = enabled;
