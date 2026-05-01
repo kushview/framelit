@@ -29,6 +29,11 @@ bool requestScreenRecordingPermission();
 // can add the app. Returns true if already trusted.
 bool requestAccessibilityPermission();
 
+// Requests microphone access via AVCaptureDevice so the system TCC prompt
+// appears at startup rather than silently failing when recording begins.
+// Returns true if already granted.
+bool requestMicrophonePermission();
+
 // Returns the CGWindowID (window server ID) for a native macOS window handle.
 // nativeWindowHandle is QWidget::winId() cast to void* — i.e. an NSView*.
 // Must be called on the main thread.

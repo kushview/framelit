@@ -59,6 +59,7 @@ void AppController::start()
     // now and get the accessibility request on the next launch.
     if (requestScreenRecordingPermission())
         requestAccessibilityPermission();
+    requestMicrophonePermission();
 #endif
 
     m_captureWindow = new CaptureWindow(this);

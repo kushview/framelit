@@ -133,6 +133,7 @@ target_link_libraries(framelit PRIVATE
 if(APPLE)
     target_link_libraries(framelit PRIVATE
         "-framework AppKit"
+        "-framework AVFoundation"
         "-framework ScreenCaptureKit"
         "-framework CoreMedia"
         "-framework CoreVideo"
@@ -159,6 +160,7 @@ if(APPLE)
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.sc.framelit"
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
     )
     # Ad-hoc sign with screen recording entitlement so TCC grants work.
     add_custom_command(TARGET framelit POST_BUILD

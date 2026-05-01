@@ -2,6 +2,7 @@
 
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <AVFoundation/AVFoundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 
 bool requestScreenRecordingPermission()
@@ -28,6 +29,17 @@ bool requestAccessibilityPermission()
     // Privacy & Security > Accessibility so the user can add the app.
     NSDictionary* opts = @{ (__bridge id)kAXTrustedCheckOptionPrompt: @YES };
     AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)opts);
+    return false;
+}
+
+bool requestMicrophonePermission()
+{
+    AVAuthorizationStatus status =
+        [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+    if (status == AVAuthorizationStatusAuthorized)
+        return true;
+    if (status == AVAuthorizationStatusNotDetermined)
+        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL) {}];
     return false;
 }
 
