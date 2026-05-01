@@ -12,8 +12,7 @@ A lightweight always-on-top screen region recorder built in C++/Qt6. Inspired by
 
 ## Language & Tooling
 
-- C++20, Qt 6.11, CMake
-- Qt found at `~/Qt/6.11.0/macos`
+- C++20, Qt >= 6.5, CMake
 - Build: `cmake -B build && cmake --build build`
 
 ## Conventions
@@ -50,3 +49,18 @@ struct RecordingSettings { int fps; OutputFormat format; QualityPreset quality; 
 - Idle/Positioning: `#94A3B8` (slate)
 - Recording: `#EF4444` (red)
 - Paused: `#FACC15` (yellow)
+
+## macOS Permissions
+
+Any macOS permission (screen recording, accessibility, microphone, etc.) **must** be requested at the very top of `AppController::start()` via a dedicated `request*Permission()` function in `platform/macos_window.h`. Never trigger permission prompts from inside a worker, manager constructor, or anything else — they must all fire early and together so the system dialogs appear at a predictable moment. The pattern:
+
+```cpp
+// AppController::start()
+#ifdef Q_OS_MAC
+    requestScreenRecordingPermission();
+    requestAccessibilityPermission();
+    // add future ones here
+#endif
+```
+
+The `request*` functions live in `src/platform/macos_window.h` / `macos_window.mm`. Components that depend on a permission (e.g. `GlobalInputManager`) check `AXIsProcessTrusted()` / `CGPreflightScreenCaptureAccess()` at construction time and silently degrade if not yet granted — they do **not** re-prompt.

@@ -44,6 +44,7 @@ if(APPLE)
     list(APPEND SOURCES
         src/platform/macos_window.mm
         src/platform/sckbackend.mm
+        src/globalinputmanager.mm
     )
 else()
     list(APPEND SOURCES
@@ -70,6 +71,7 @@ if(APPLE)
     list(APPEND HEADERS
         src/platform/sckbackend.hpp
         src/platform/macos_window.h
+        src/globalinputmanager.hpp
     )
 else()
     list(APPEND HEADERS src/platform/qtscreenbackend.hpp)
@@ -153,10 +155,11 @@ if(APPLE)
     )
     # Ad-hoc sign with screen recording entitlement so TCC grants work.
     add_custom_command(TARGET screen-capture-qt POST_BUILD
-        COMMAND codesign --force --deep --sign -
+        COMMAND codesign --force --deep
+                --sign "ED7BA643A218B65A4A1068D40A77E73EFA30ED56"
                 --entitlements "${CMAKE_SOURCE_DIR}/entitlements.plist"
                 "$<TARGET_BUNDLE_DIR:screen-capture-qt>"
-        COMMENT "Ad-hoc signing with screen recording entitlement"
+        COMMENT "Signing with Developer ID"
     )
 endif()
 

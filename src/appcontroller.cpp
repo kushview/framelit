@@ -9,6 +9,7 @@
 
 #ifdef Q_OS_MAC
 #  include "platform/macos_window.h"
+#  include "globalinputmanager.hpp"
 #endif
 
 #include <QGuiApplication>
@@ -46,9 +47,15 @@ AppController::~AppController()
 void AppController::start()
 {
 #ifdef Q_OS_MAC
-    // Trigger the TCC screen recording consent prompt at startup so the
-    // system dialog appears before the user clicks Record, not racing with it.
-    requestScreenRecordingPermission();
+    // Request permissions serially — macOS shows only one TCC dialog at a time.
+    // CGRequestScreenCaptureAccess() is async (returns before the dialog is dismissed),
+    // so if we fire both at once the Accessibility request opens System Preferences
+    // silently behind the screen recording dialog and is never seen.
+    // Strategy: request screen recording first. If it's already granted, request
+    // accessibility. If not, stop — the user will see the screen recording dialog
+    // now and get the accessibility request on the next launch.
+    if (requestScreenRecordingPermission())
+        requestAccessibilityPermission();
 #endif
 
     m_captureWindow = new CaptureWindow(this);
@@ -81,6 +88,12 @@ void AppController::start()
 
     // Pre-position before show() so macOS doesn't lock in the constructor default.
     m_captureWindow->setGeometry(m_region.rect);
+
+#ifdef Q_OS_MAC
+    m_hotkeyManager = new GlobalInputManager(this);
+    connect(m_hotkeyManager, &GlobalInputManager::growRequested,   this, &AppController::onGrowRequested);
+    connect(m_hotkeyManager, &GlobalInputManager::shrinkRequested, this, &AppController::onShrinkRequested);
+#endif
 
     m_captureWindow->show();
     m_controlBar->show();
@@ -176,6 +189,12 @@ void AppController::onRegionChanged(const QRect& rect)
     m_region.rect = rect;
     if (!m_region.screen)
         m_region.screen = QGuiApplication::primaryScreen();
+
+    // If the user dragged the window (not a hotkey resize), clear the latched
+    // aspect so the next hotkey press re-latches from the new shape.
+    if (!m_applyingResize)
+        m_resizeAspect = 0.0;
+
     emit regionChanged(m_region);
 
     if (m_controlBar)
@@ -288,6 +307,32 @@ void AppController::onSnapAspectRequested()
     else
         r.setWidth(r.height() * 9 / 16);
     onRegionChanged(r);
+}
+
+void AppController::onGrowRequested()   { applyResizeDelta(+10); }
+void AppController::onShrinkRequested() { applyResizeDelta(-10); }
+
+void AppController::applyResizeDelta(int delta)
+{
+    QRect r = m_region.rect;
+    if (r.isEmpty()) return;
+
+    // Latch aspect ratio on first press; reuse it for all subsequent presses
+    // in the same sequence so integer rounding doesn't drift the ratio.
+    if (m_resizeAspect <= 0.0)
+        m_resizeAspect = double(r.width()) / r.height();
+
+    const int newW = qMax(CaptureWindow::kMinDimension, r.width() + delta);
+    const int newH = qMax(CaptureWindow::kMinDimension, qRound(newW / m_resizeAspect));
+
+    const QPoint center = r.center();
+    r.setWidth(newW);
+    r.setHeight(newH);
+    r.moveCenter(center);
+
+    m_applyingResize = true;
+    onRegionChanged(r);
+    m_applyingResize = false;
 }
 
 // ---------------------------------------------------------------------------

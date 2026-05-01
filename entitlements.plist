@@ -4,6 +4,8 @@
 <dict>
     <key>com.apple.security.screen-recording</key>
     <true/>
+    <key>com.apple.security.temporary-exception.accessibility</key>
+    <true/>
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>

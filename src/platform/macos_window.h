@@ -24,6 +24,11 @@ void setWindowHidesOnDeactivate(void* nativeWindowHandle, bool hides);
 // Returns true if permission is already granted, false otherwise.
 bool requestScreenRecordingPermission();
 
+// Checks Accessibility permission (required for CGEventTap global hotkeys).
+// If not granted, opens the System Settings Accessibility pane so the user
+// can add the app. Returns true if already trusted.
+bool requestAccessibilityPermission();
+
 // Returns the CGWindowID (window server ID) for a native macOS window handle.
 // nativeWindowHandle is QWidget::winId() cast to void* — i.e. an NSView*.
 // Must be called on the main thread.

@@ -7,6 +7,10 @@
 #include <QStandardPaths>
 #include <QString>
 
+#ifdef Q_OS_MACOS
+#  include "globalinputmanager.hpp"
+#endif
+
 // Forward-declare Qt class outside namespace sc to avoid sc::QThread ambiguity
 class QThread;
 
@@ -138,6 +142,8 @@ public slots:
     void onAudioDeviceChangeRequested(const QString& deviceId);
     void onOutputDirChangeRequested(const QString& dir);
     void onSnapAspectRequested();
+    void onGrowRequested();
+    void onShrinkRequested();
 
 signals:
     void stateChanged(sc::AppState newState);
@@ -153,16 +159,24 @@ private:
     // Takes ownership of both worker and the thread.
     void attachWorker(RecorderWorker* worker);
     void teardownWorker();
+    void applyResizeDelta(int delta);
 
     AppState m_state = AppState::Idle;
     CaptureRegion m_region;
     RecordingSettings m_settings;
+
+    double m_resizeAspect   = 0.0;   // latched on first hotkey resize; 0 = unset
+    bool   m_applyingResize = false; // true while applyResizeDelta is calling onRegionChanged
 
     CaptureWindow*     m_captureWindow  = nullptr;
     ControlBar*        m_controlBar     = nullptr;
     RecorderWorker*    m_worker         = nullptr;
     QThread*           m_workerThread   = nullptr;
     RecordingStrategy* m_strategy       = nullptr;  // owned; created per recording
+
+#ifdef Q_OS_MACOS
+    GlobalInputManager* m_hotkeyManager = nullptr;
+#endif
 };
 
 } // namespace sc

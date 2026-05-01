@@ -1,6 +1,7 @@
 #include "macos_window.h"
 
 #import <AppKit/AppKit.h>
+#import <ApplicationServices/ApplicationServices.h>
 #import <CoreGraphics/CoreGraphics.h>
 
 bool requestScreenRecordingPermission()
@@ -16,6 +17,17 @@ bool requestScreenRecordingPermission()
     // The call returns false initially (permission is async); the app should
     // check again after the user responds.
     CGRequestScreenCaptureAccess();
+    return false;
+}
+
+bool requestAccessibilityPermission()
+{
+    if (AXIsProcessTrusted())
+        return true;
+    // Passing kAXTrustedCheckOptionPrompt: true opens System Settings >
+    // Privacy & Security > Accessibility so the user can add the app.
+    NSDictionary* opts = @{ (__bridge id)kAXTrustedCheckOptionPrompt: @YES };
+    AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)opts);
     return false;
 }
 
