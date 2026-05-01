@@ -33,6 +33,7 @@ public:
     void setAudioDeviceId(const QString& id);
     void setOutputDir(const QString& dir);
     void setOutputSize(QSize size);
+    void setGrowStep(int step);
     void setFormat(sc::OutputFormat format);
     void setHiDpi(bool hiDpi);
     void setFollowMouse(bool enabled);
@@ -53,6 +54,7 @@ signals:
     void followMouseChangeRequested(bool enabled);
     void outputDirChangeRequested(QString dir);
     void outputSizeChangeRequested(QSize size);
+    void growStepChangeRequested(int step);
     void snapAspectRequested();
 
 public slots:
@@ -107,6 +109,7 @@ private:
     AppState m_state = AppState::Idle;
     QString      m_outputDir;
     QSize        m_outputSize = {800, 450};
+    int          m_growStep   = 10;
 };
 
 } // namespace sc

@@ -75,6 +75,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::audioDeviceChangeRequested, this, &AppController::onAudioDeviceChangeRequested);
     connect(m_controlBar, &ControlBar::outputDirChangeRequested,   this, &AppController::onOutputDirChangeRequested);
     connect(m_controlBar, &ControlBar::outputSizeChangeRequested,  this, &AppController::onOutputSizeChangeRequested);
+    connect(m_controlBar, &ControlBar::growStepChangeRequested,    this, &AppController::onGrowStepChangeRequested);
     connect(m_controlBar, &ControlBar::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
 
@@ -82,6 +83,7 @@ void AppController::start()
     m_controlBar->setAudioDeviceId(m_settings.audioDeviceId);
     m_controlBar->setOutputDir(m_settings.outputDir);
     m_controlBar->setOutputSize(m_settings.outputSize);
+    m_controlBar->setGrowStep(m_settings.growStep);
     m_controlBar->setFormat(m_settings.format);
     m_controlBar->setHiDpi(m_settings.hiDpi);
 
@@ -326,6 +328,14 @@ void AppController::onOutputSizeChangeRequested(QSize size)
     saveSettings();
 }
 
+void AppController::onGrowStepChangeRequested(int step)
+{
+    if (m_state != AppState::Idle)
+        return;
+    m_settings.growStep = qBound(1, step, 200);
+    saveSettings();
+}
+
 void AppController::onSnapAspectRequested()
 {
     if (m_state != AppState::Idle)
@@ -339,8 +349,8 @@ void AppController::onSnapAspectRequested()
     onRegionChanged(r);
 }
 
-void AppController::onGrowRequested()   { applyResizeDelta(+10); }
-void AppController::onShrinkRequested() { applyResizeDelta(-10); }
+void AppController::onGrowRequested()   { applyResizeDelta(+m_settings.growStep); }
+void AppController::onShrinkRequested() { applyResizeDelta(-m_settings.growStep); }
 
 void AppController::applyResizeDelta(int delta)
 {

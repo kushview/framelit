@@ -16,6 +16,7 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScreen>
+#include <QSpinBox>
 #include <QTimer>
 
 #ifdef Q_OS_MACOS
@@ -277,6 +278,14 @@ void ControlBar::buildUi()
         sizeCombo->setCurrentIndex(currentSizeIndex);
         form->addRow("Output size:", sizeCombo);
 
+        // Grow/shrink step
+        auto* growStepSpin = new QSpinBox(dlg);
+        growStepSpin->setRange(1, 200);
+        growStepSpin->setSuffix(" px");
+        growStepSpin->setValue(m_growStep);
+        growStepSpin->setToolTip("Pixels added or removed per grow/shrink hotkey press");
+        form->addRow("Grow/shrink step:", growStepSpin);
+
         vlay->addLayout(form);
 
         connect(browseBtn, &QPushButton::clicked, dlg, [dirEdit, dlg]() {
@@ -288,7 +297,7 @@ void ControlBar::buildUi()
 
         auto* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dlg);
-        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions]() {
+        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions, growStepSpin]() {
             const QString dir = dirEdit->text();
             if (dir != m_outputDir) {
                 m_outputDir = dir;
@@ -298,6 +307,11 @@ void ControlBar::buildUi()
             if (size != m_outputSize) {
                 m_outputSize = size;
                 emit outputSizeChangeRequested(m_outputSize);
+            }
+            const int step = growStepSpin->value();
+            if (step != m_growStep) {
+                m_growStep = step;
+                emit growStepChangeRequested(m_growStep);
             }
             dlg->accept();
         });
@@ -347,6 +361,11 @@ void ControlBar::setOutputDir(const QString& dir)
 void ControlBar::setOutputSize(QSize size)
 {
     m_outputSize = size;
+}
+
+void ControlBar::setGrowStep(int step)
+{
+    m_growStep = step;
 }
 
 void ControlBar::setFormat(sc::OutputFormat format)

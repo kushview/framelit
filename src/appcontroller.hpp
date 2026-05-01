@@ -73,6 +73,7 @@ struct RecordingSettings {
     QSize outputSize     = {800, 450}; // base output size; doubled when hiDpi is on
     QString audioDeviceId;          // empty = system default
     QString outputDir;
+    int     growStep = 10;          // px added/removed per grow/shrink hotkey press
 
     // Populate from QSettings. Any key not present keeps its default value.
     static RecordingSettings load(QSettings& qs)
@@ -93,6 +94,7 @@ struct RecordingSettings {
         s.audioDeviceId = qs.value("audioDeviceId", s.audioDeviceId).toString();
         s.outputDir  = qs.value("outputDir",
             QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
+        s.growStep   = qs.value("growStep",   s.growStep).toInt();
         return s;
     }
 
@@ -110,6 +112,7 @@ struct RecordingSettings {
         qs.setValue("outputSizeH",   outputSize.height());
         qs.setValue("audioDeviceId", audioDeviceId);
         qs.setValue("outputDir",     outputDir);
+        qs.setValue("growStep",      growStep);
     }
 };
 
@@ -153,6 +156,7 @@ public slots:
     void onAudioDeviceChangeRequested(const QString& deviceId);
     void onOutputDirChangeRequested(const QString& dir);
     void onOutputSizeChangeRequested(QSize size);
+    void onGrowStepChangeRequested(int step);
     void onFollowMouseChangeRequested(bool enabled);
     void onFollowMouseToggleRequested();
     void onFollowMouseTick();
