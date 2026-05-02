@@ -1,5 +1,6 @@
 #include "gifencoder.hpp"
 #include "../capture/framestore.hpp"
+#include "../imageutil.hpp"
 
 #include <QImage>
 #include <QDebug>
@@ -124,8 +125,7 @@ void GifEncoder::encode()
         img = img.copy(computeCropRect(tf, img));
 
         // Scale to output dimensions if needed.
-        if (img.width() != outW || img.height() != outH)
-            img = img.scaled(outW, outH, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        img = scaleImage(img, QSize(outW, outH), m_gifSettings.letterbox);
 
         // Quantize to 256 colours using Qt's built-in dithering.
         QImage indexed = img.convertToFormat(QImage::Format_Indexed8,

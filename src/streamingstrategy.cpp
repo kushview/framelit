@@ -1,10 +1,10 @@
 #include "streamingstrategy.hpp"
 #include "encoding/videoencoder.hpp"
+#include "imageutil.hpp"
 
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
-#include <QPainter>
 #include <QStandardPaths>
 
 namespace sc {
@@ -57,26 +57,8 @@ void StreamingStrategy::onFrame(const QImage& rawImage, const CaptureRegion& reg
     QSize kOutputSize = m_settings.outputSize;
     if (m_settings.hiDpi && region.screen)
         kOutputSize *= region.screen->devicePixelRatio();
-    if (!image.isNull() && image.size() != kOutputSize) {
-        if (m_settings.letterbox) {
-            // Scale preserving aspect ratio, center on a black canvas.
-            const QImage fitted = image.scaled(kOutputSize,
-                                               Qt::KeepAspectRatio,
-                                               Qt::SmoothTransformation);
-            QImage composed(kOutputSize, QImage::Format_ARGB32);
-            composed.fill(Qt::black);
-            QPainter painter(&composed);
-            const QPoint topLeft((kOutputSize.width()  - fitted.width())  / 2,
-                                 (kOutputSize.height() - fitted.height()) / 2);
-            painter.drawImage(topLeft, fitted);
-            image = composed;
-        } else {
-            // Stretch to fill — no bars, aspect ratio not preserved.
-            image = image.scaled(kOutputSize,
-                                 Qt::IgnoreAspectRatio,
-                                 Qt::SmoothTransformation);
-        }
-    }
+    if (!image.isNull() && image.size() != kOutputSize)
+        image = scaleImage(image, kOutputSize, m_settings.letterbox);
 
     if (!m_started) {
         const QString timestamp =

@@ -57,6 +57,7 @@ void BufferedStrategy::finish()
         gifSettings.outputSize *= dpr;
     }
     gifSettings.quality    = m_settings.quality;
+    gifSettings.letterbox  = m_settings.letterbox;
 
     // Tear down any leftover encoder thread (shouldn't happen, defensive).
     if (m_encoderThread) {

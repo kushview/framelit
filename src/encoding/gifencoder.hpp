@@ -14,6 +14,7 @@ struct GifExportSettings {
     int outputFps  = 10;             // target playback FPS (≤ recording FPS)
     QSize outputSize = {800, 450};   // final encoded dimensions
     QualityPreset quality = QualityPreset::Medium;
+    bool letterbox = true;           // preserve aspect ratio with black bars
 };
 
 // Encodes a FrameStore snapshot to an animated GIF file.
