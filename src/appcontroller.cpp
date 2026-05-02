@@ -105,6 +105,9 @@ void AppController::start()
     connect(m_hotkeyManager, &GlobakHotkeys::shrinkRequested,            this, &AppController::onShrinkRequested);
     connect(m_hotkeyManager, &GlobakHotkeys::followMouseToggleRequested, this, &AppController::onFollowMouseToggleRequested);
     connect(m_hotkeyManager, &GlobakHotkeys::recordToggleRequested,      this, &AppController::onRecordToggleRequested);
+    connect(m_hotkeyManager, &GlobakHotkeys::showUiRequested,            this, [this]() {
+        setUiVisible(true);
+    });
 #endif
 
     // Follow-mouse pan timer — runs at 60 Hz during recording when enabled.

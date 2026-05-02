@@ -20,6 +20,7 @@ signals:
     void shrinkRequested();
     void followMouseToggleRequested();
     void recordToggleRequested();
+    void showUiRequested();
 
 private:
     void* m_tap = nullptr; // CFMachPortRef — opaque to keep ObjC out of header

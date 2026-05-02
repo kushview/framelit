@@ -13,6 +13,7 @@ static constexpr CGKeyCode kKeyCodeEqual = 0x18; // = and + (with shift)
 static constexpr CGKeyCode kKeyCodeMinus = 0x1B; // - and _ (with shift)
 static constexpr CGKeyCode kKeyCodeF     = 0x03; // F — toggle follow-mouse
 static constexpr CGKeyCode kKeyCodeSpace = 0x31; // Space — toggle record
+static constexpr CGKeyCode kKeyCode4     = 0x15; // 4 — show capture UI
 
 static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
                                    CGEventType    type,
@@ -38,6 +39,11 @@ static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
                 QMetaObject::invokeMethod(mgr, "shrinkRequested", Qt::QueuedConnection);
             else if (keyCode == kKeyCodeF)
                 QMetaObject::invokeMethod(mgr, "followMouseToggleRequested", Qt::QueuedConnection);
+            // Cmd+Shift+4 — show capture UI; consume so macOS screenshot tool doesn't open.
+            else if (keyCode == kKeyCode4) {
+                QMetaObject::invokeMethod(mgr, "showUiRequested", Qt::QueuedConnection);
+                return nullptr; // consumed
+            }
         }
         // Cmd+Space — toggle recording; consume the event so Spotlight doesn't open.
         else if (cmd && !shift && !alt && !ctrl && keyCode == kKeyCodeSpace) {
