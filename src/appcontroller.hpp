@@ -201,6 +201,7 @@ private:
     RecorderWorker*    m_worker         = nullptr;
     QThread*           m_workerThread   = nullptr;
     RecordingStrategy* m_strategy       = nullptr;  // owned; created per recording
+    QMetaObject::Connection m_frameConn;            // frameReady→onFrame; disconnected before strategy teardown
     QTimer*            m_followTimer    = nullptr;
     SystemTray*        m_tray           = nullptr;
     Actions*        m_actions        = nullptr;

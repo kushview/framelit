@@ -6,6 +6,7 @@
 #include <QMutex>
 #include <QObject>
 #include <QRect>
+#include <QThread>
 #include <QVector>
 
 namespace sc {
@@ -56,7 +57,8 @@ signals:
 private:
     mutable QMutex       m_mutex;
     QVector<TaggedFrame> m_frames;
-    int                  m_totalAdded = 0;
+    int                  m_totalAdded    = 0;
+    QThread*             m_producerThread = nullptr;  // set on first addFrame(); used for assertions
 };
 
 } // namespace sc

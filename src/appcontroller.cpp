@@ -19,9 +19,11 @@
 #include "ui/systemtray.hpp"
 #include "ui/actions.hpp"
 #include <QApplication>
+#include <QDesktopServices>
 #include <QMessageBox>
 #include <QScreen>
 #include <QThread>
+#include <QUrl>
 #include <qwindowdefs.h>
 
 namespace sc {
@@ -212,7 +214,9 @@ void AppController::onStartRequested()
     attachWorker(worker);
 
     // Route captured frames to the strategy.
-    connect(worker, &RecorderWorker::frameReady,
+    // Store the connection so we can disconnect it before tearing down the
+    // strategy — queued frames must not fire against a deleted object.
+    m_frameConn = connect(worker, &RecorderWorker::frameReady,
             this, [this](const QImage& image, const sc::CaptureRegion& region) {
                 if (m_strategy)
                     m_strategy->onFrame(image, region);
@@ -311,18 +315,20 @@ void AppController::onEncodingProgress(float fraction)
 void AppController::onEncodingFinished(const QString& filePath)
 {
     qDebug() << "Output saved:" << filePath;
-    // Strategy has finished — release it.
+    // Disconnect frame delivery first — queued frames must not fire against
+    // a strategy that has been marked for deletion.
+    disconnect(m_frameConn);
     if (m_strategy) {
         m_strategy->deleteLater();
         m_strategy = nullptr;
     }
     setState(AppState::Idle);
-    // TODO (Milestone 6): open preview
 }
 
 void AppController::onEncodingFailed(const QString& reason)
 {
     qWarning() << "Encoding failed:" << reason;
+    disconnect(m_frameConn);
     if (m_strategy) {
         m_strategy->deleteLater();
         m_strategy = nullptr;
