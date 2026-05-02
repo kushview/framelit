@@ -38,6 +38,7 @@ public:
     void setHiDpi(bool hiDpi);
     void setCaptureAudio(bool on);
     void setFollowMouse(bool enabled);
+    void setLetterbox(bool letterbox);
 
     // When true the app's own windows are NOT excluded from the SCK capture,
     // so the capture frame / control bar appear in the recorded output.
@@ -56,6 +57,7 @@ signals:
     void outputDirChangeRequested(QString dir);
     void outputSizeChangeRequested(QSize size);
     void growStepChangeRequested(int step);
+    void letterboxChangeRequested(bool letterbox);
     void snapAspectRequested();
 
 public slots:
@@ -107,6 +109,7 @@ private:
     bool         m_captureAudio = false;
     bool         m_hiDpi        = false;
     bool         m_followMouse  = false;
+    bool         m_letterbox    = true;
     AppState m_state = AppState::Idle;
     QString      m_outputDir;
     QSize        m_outputSize = {800, 450};

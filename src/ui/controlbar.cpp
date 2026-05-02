@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QAudioDevice>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -286,6 +287,12 @@ void ControlBar::buildUi()
         growStepSpin->setToolTip("Pixels added or removed per grow/shrink hotkey press");
         form->addRow("Grow/shrink step:", growStepSpin);
 
+        // Letterbox vs fill
+        auto* letterboxCheck = new QCheckBox("Letterbox (preserve aspect ratio)", dlg);
+        letterboxCheck->setChecked(m_letterbox);
+        letterboxCheck->setToolTip("When checked, black bars fill any aspect-ratio gap. When unchecked, the frame is stretched to fill the output.");
+        form->addRow("Scaling:", letterboxCheck);
+
         vlay->addLayout(form);
 
         connect(browseBtn, &QPushButton::clicked, dlg, [dirEdit, dlg]() {
@@ -297,7 +304,7 @@ void ControlBar::buildUi()
 
         auto* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dlg);
-        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions, growStepSpin]() {
+        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions, growStepSpin, letterboxCheck]() {
             const QString dir = dirEdit->text();
             if (dir != m_outputDir) {
                 m_outputDir = dir;
@@ -312,6 +319,11 @@ void ControlBar::buildUi()
             if (step != m_growStep) {
                 m_growStep = step;
                 emit growStepChangeRequested(m_growStep);
+            }
+            const bool lb = letterboxCheck->isChecked();
+            if (lb != m_letterbox) {
+                m_letterbox = lb;
+                emit letterboxChangeRequested(m_letterbox);
             }
             dlg->accept();
         });
@@ -360,6 +372,11 @@ void ControlBar::setFollowMouse(bool enabled)
     m_followMouse = enabled;
     if (m_followMouseButton)
         m_followMouseButton->setChecked(enabled);
+}
+
+void ControlBar::setLetterbox(bool letterbox)
+{
+    m_letterbox = letterbox;
 }
 
 void ControlBar::setOutputDir(const QString& dir)

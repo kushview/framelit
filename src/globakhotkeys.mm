@@ -13,7 +13,8 @@ static constexpr CGKeyCode kKeyCodeEqual = 0x18; // = and + (with shift)
 static constexpr CGKeyCode kKeyCodeMinus = 0x1B; // - and _ (with shift)
 static constexpr CGKeyCode kKeyCodeF     = 0x03; // F — toggle follow-mouse
 static constexpr CGKeyCode kKeyCodeSpace = 0x31; // Space — toggle record
-static constexpr CGKeyCode kKeyCode4     = 0x15; // 4 — show capture UI
+static constexpr CGKeyCode kKeyCode4     = 0x15; // number-row 4 — show capture UI
+static constexpr CGKeyCode kKeyCodeKP4   = 0x56; // keypad 4 — show capture UI
 
 static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
                                    CGEventType    type,
@@ -40,7 +41,7 @@ static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
             else if (keyCode == kKeyCodeF)
                 QMetaObject::invokeMethod(mgr, "followMouseToggleRequested", Qt::QueuedConnection);
             // Cmd+Shift+4 — show capture UI; consume so macOS screenshot tool doesn't open.
-            else if (keyCode == kKeyCode4) {
+            else if (keyCode == kKeyCode4 || keyCode == kKeyCodeKP4) {
                 QMetaObject::invokeMethod(mgr, "showUiRequested", Qt::QueuedConnection);
                 return nullptr; // consumed
             }

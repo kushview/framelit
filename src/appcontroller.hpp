@@ -70,6 +70,7 @@ struct RecordingSettings {
     bool countdown       = false;
     bool captureAudio    = false;  // mic audio muxed into MP4; no effect on GIF
     bool hiDpi           = false;  // 2× output resolution — multiplies outputSize by 2
+    bool letterbox       = true;   // letterbox/pillarbox to preserve aspect; false = stretch to fill
     QSize outputSize     = {800, 450}; // base output size; doubled when hiDpi is on
     QString audioDeviceId;          // empty = system default
     QString outputDir;
@@ -92,6 +93,7 @@ struct RecordingSettings {
         s.outputSize    = QSize(qs.value("outputSizeW", s.outputSize.width()).toInt(),
                                qs.value("outputSizeH", s.outputSize.height()).toInt());
         s.audioDeviceId = qs.value("audioDeviceId", s.audioDeviceId).toString();
+        s.letterbox  = qs.value("letterbox",   s.letterbox).toBool();
         s.outputDir  = qs.value("outputDir",
             QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
         s.growStep   = qs.value("growStep",   s.growStep).toInt();
@@ -111,6 +113,7 @@ struct RecordingSettings {
         qs.setValue("outputSizeW",   outputSize.width());
         qs.setValue("outputSizeH",   outputSize.height());
         qs.setValue("audioDeviceId", audioDeviceId);
+        qs.setValue("letterbox",     letterbox);
         qs.setValue("outputDir",     outputDir);
         qs.setValue("growStep",      growStep);
     }
@@ -161,6 +164,7 @@ public slots:
     void onGrowStepChangeRequested(int step);
     void onFollowMouseChangeRequested(bool enabled);
     void onFollowMouseToggleRequested();
+    void onLetterboxChangeRequested(bool letterbox);
     void onRecordToggleRequested();
     void onFollowMouseTick();
     void onSnapAspectRequested();

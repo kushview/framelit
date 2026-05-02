@@ -83,6 +83,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::outputSizeChangeRequested,  this, &AppController::onOutputSizeChangeRequested);
     connect(m_controlBar, &ControlBar::growStepChangeRequested,    this, &AppController::onGrowStepChangeRequested);
     connect(m_controlBar, &ControlBar::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
+    connect(m_controlBar, &ControlBar::letterboxChangeRequested,    this, &AppController::onLetterboxChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
 
     applySettingsToUI();
@@ -383,6 +384,14 @@ void AppController::onHiDpiChangeRequested(bool hiDpi)
     syncActions();
 }
 
+void AppController::onLetterboxChangeRequested(bool letterbox)
+{
+    if (m_state != AppState::Idle)
+        return;
+    m_settings.letterbox = letterbox;
+    saveSettings();
+}
+
 void AppController::onAudioDeviceChangeRequested(const QString& deviceId)
 {
     if (m_state != AppState::Idle)
@@ -585,6 +594,7 @@ void AppController::applySettingsToUI()
     m_controlBar->setFormat(m_settings.format);
     m_controlBar->setHiDpi(m_settings.hiDpi);
     m_controlBar->setCaptureAudio(m_settings.captureAudio);
+    m_controlBar->setLetterbox(m_settings.letterbox);
 }
 
 void AppController::loadSettings()
