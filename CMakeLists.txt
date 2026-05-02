@@ -198,19 +198,27 @@ if(APPLE)
         endif()
     endif()
 
-    # Step 2: sign the bundle with hardened runtime + secure timestamp so the
-    # bundle is accepted by Apple's notarization service without modification.
-    # To notarize: xcrun notarytool submit Framelit.app --wait ...
-    # To staple:   xcrun stapler staple Framelit.app
-    add_custom_command(TARGET framelit POST_BUILD
-        COMMAND codesign --force --deep
-                --sign "${FRAMELIT_CODESIGN_IDENTITY}"
-                --entitlements "${CMAKE_SOURCE_DIR}/entitlements.plist"
-                --options runtime
-                --timestamp
-                "$<TARGET_BUNDLE_DIR:framelit>"
-        COMMENT "Signing Framelit.app (hardened runtime + timestamp)"
-    )
+    # Step 2: sign the bundle.
+    # - Developer ID identity: hardened runtime + secure timestamp for notarization.
+    # - Ad hoc identity (-): simple local/CI signing without notarization flags.
+    if(FRAMELIT_CODESIGN_IDENTITY STREQUAL "-")
+        add_custom_command(TARGET framelit POST_BUILD
+            COMMAND codesign --force --deep
+                    --sign "-"
+                    "$<TARGET_BUNDLE_DIR:framelit>"
+            COMMENT "Signing Framelit.app (ad hoc)"
+        )
+    else()
+        add_custom_command(TARGET framelit POST_BUILD
+            COMMAND codesign --force --deep
+                    --sign "${FRAMELIT_CODESIGN_IDENTITY}"
+                    --entitlements "${CMAKE_SOURCE_DIR}/entitlements.plist"
+                    --options runtime
+                    --timestamp
+                    "$<TARGET_BUNDLE_DIR:framelit>"
+            COMMENT "Signing Framelit.app (hardened runtime + timestamp)"
+        )
+    endif()
 
     # Notarize Example
     # echo "Notarizing"

@@ -20,7 +20,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake \
-            ninja-build
+            ninja-build \
+            libx11-dev \
+            libxext-dev
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -57,7 +59,7 @@ jobs:
           modules: 'qtmultimedia'
 
       - name: Configure
-        run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release -DFRAMELIT_CODESIGN_IDENTITY=-
 
       - name: Build
         run: cmake --build build
