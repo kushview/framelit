@@ -1,10 +1,8 @@
 #include "bufferedstrategy.hpp"
 #include "encoding/gifencoder.hpp"
+#include "outputpath.hpp"
 
-#include <QDateTime>
 #include <QDebug>
-#include <QDir>
-#include <QStandardPaths>
 #include <QThread>
 
 namespace sc {
@@ -38,15 +36,9 @@ void BufferedStrategy::finish()
         return;
     }
 
-    const QString timestamp =
-        QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd-HHmmss"));
-    const QString outputDir = m_settings.outputDir.isEmpty()
-        ? QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)
-        : m_settings.outputDir;
-    QDir().mkpath(outputDir);
-    const QString outputPath =
-        outputDir + QDir::separator() +
-        QStringLiteral("capture-%1.gif").arg(timestamp);
+    const QString outputPath = makeCaptureOutputPath(
+        m_settings.outputDir,
+        QStringLiteral("gif"));
 
     GifExportSettings gifSettings;
     gifSettings.outputFps  = qMin(10, m_settings.fps);

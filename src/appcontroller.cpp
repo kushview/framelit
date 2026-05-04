@@ -5,6 +5,7 @@
 #include "bufferedstrategy.hpp"
 #include "streamingstrategy.hpp"
 #include "mousepanner.hpp"
+#include "outputpath.hpp"
 #include "ui/capturewindow.hpp"
 #include "ui/centerhandle.hpp"
 #include "ui/controlbar.hpp"
@@ -20,9 +21,7 @@
 #include "ui/systemtray.hpp"
 #include "ui/actions.hpp"
 #include <QApplication>
-#include <QDateTime>
 #include <QDesktopServices>
-#include <QDir>
 #include <QMessageBox>
 #include <QScreen>
 #include <QThread>
@@ -514,13 +513,9 @@ void AppController::onScreenshotRequested()
         if (px.isNull())
             return;
 
-        QString dir = m_settings.outputDir;
-        if (dir.isEmpty())
-            dir = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
-        QDir().mkpath(dir);
-
-        const QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
-        const QString path = dir + "/framelit_" + timestamp + ".png";
+        const QString path = makeCaptureOutputPath(
+            m_settings.outputDir,
+            QStringLiteral("png"));
         px.save(path, "PNG");
     });
 }
