@@ -1,4 +1,4 @@
-#include "globakhotkeys.hpp"
+#include "globalhotkeys.hpp"
 
 #import <ApplicationServices/ApplicationServices.h>
 #import <CoreGraphics/CoreGraphics.h>
@@ -30,7 +30,7 @@ static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
 
         auto keyCode = static_cast<CGKeyCode>(
             CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
-        auto* mgr = static_cast<GlobakHotkeys*>(userInfo);
+        auto* mgr = static_cast<GlobalHotkeys*>(userInfo);
 
         // Cmd+Shift+= / Cmd+Shift+- — grow/shrink
         if (cmd && shift && !alt && !ctrl) {
@@ -42,8 +42,8 @@ static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
                 QMetaObject::invokeMethod(mgr, "followMouseToggleRequested", Qt::QueuedConnection);
             // Cmd+Shift+4 — show capture UI; consume so macOS screenshot tool doesn't open.
             else if (keyCode == kKeyCode4 || keyCode == kKeyCodeKP4) {
-                QMetaObject::invokeMethod(mgr, "showUiRequested", Qt::QueuedConnection);
-                return nullptr; // consumed
+                // QMetaObject::invokeMethod(mgr, "showUiRequested", Qt::QueuedConnection);
+                return event;
             }
         }
         // Cmd+Space — toggle recording; consume the event so Spotlight doesn't open.
@@ -55,11 +55,11 @@ static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/,
     return event; // pass all events through — listen-only
 }
 
-GlobakHotkeys::GlobakHotkeys(QObject* parent)
+GlobalHotkeys::GlobalHotkeys(QObject* parent)
     : QObject(parent)
 {
     if (!AXIsProcessTrusted()) {
-        qWarning("GlobakHotkeys: Accessibility not granted — global hotkeys disabled.");
+        qWarning("GlobalHotkeys: Accessibility not granted — global hotkeys disabled.");
         return;
     }
 
@@ -72,7 +72,7 @@ GlobakHotkeys::GlobakHotkeys(QObject* parent)
         this
     );
     if (!tap) {
-        qWarning("GlobakHotkeys: CGEventTapCreate failed.");
+        qWarning("GlobalHotkeys: CGEventTapCreate failed.");
         return;
     }
 
@@ -84,7 +84,7 @@ GlobakHotkeys::GlobakHotkeys(QObject* parent)
     m_tap = tap; // keep alive — released in destructor
 }
 
-GlobakHotkeys::~GlobakHotkeys()
+GlobalHotkeys::~GlobalHotkeys()
 {
     if (m_tap) {
         auto tap = static_cast<CFMachPortRef>(m_tap);

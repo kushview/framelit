@@ -10,7 +10,7 @@
 #include <QTimer>
 
 #ifdef Q_OS_MACOS
-#  include "globakhotkeys.hpp"
+#  include "globalhotkeys.hpp"
 #endif
 
 // Forward-declare Qt class outside namespace sc to avoid sc::QThread ambiguity
@@ -71,6 +71,7 @@ struct RecordingSettings {
     bool captureAudio    = false;  // mic audio muxed into MP4; no effect on GIF
     bool hiDpi           = false;  // 2× output resolution — multiplies outputSize by 2
     bool letterbox       = true;   // letterbox/pillarbox to preserve aspect; false = stretch to fill
+    bool demoMode        = false;  // when true, app windows are visible to external screen recorders
     QSize outputSize     = {800, 450}; // base output size; doubled when hiDpi is on
     QString audioDeviceId;          // empty = system default
     QString outputDir;
@@ -94,6 +95,7 @@ struct RecordingSettings {
                                qs.value("outputSizeH", s.outputSize.height()).toInt());
         s.audioDeviceId = qs.value("audioDeviceId", s.audioDeviceId).toString();
         s.letterbox  = qs.value("letterbox",   s.letterbox).toBool();
+        s.demoMode   = qs.value("demoMode",     s.demoMode).toBool();
         s.outputDir  = qs.value("outputDir",
             QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
         s.growStep   = qs.value("growStep",   s.growStep).toInt();
@@ -114,6 +116,7 @@ struct RecordingSettings {
         qs.setValue("outputSizeH",   outputSize.height());
         qs.setValue("audioDeviceId", audioDeviceId);
         qs.setValue("letterbox",     letterbox);
+        qs.setValue("demoMode",      demoMode);
         qs.setValue("outputDir",     outputDir);
         qs.setValue("growStep",      growStep);
     }
@@ -159,6 +162,7 @@ public slots:
     void onFormatChangeRequested(sc::OutputFormat format);
     void onAudioChangeRequested(bool captureAudio);
     void onHiDpiChangeRequested(bool hiDpi);
+    void onDemoModeChangeRequested(bool on);
     void onAudioDeviceChangeRequested(const QString& deviceId);
     void onOutputDirChangeRequested(const QString& dir);
     void onOutputSizeChangeRequested(QSize size);
@@ -183,6 +187,7 @@ private:
     void setState(AppState s);
     void loadSettings();
     void saveSettings();
+    void applyDemoMode();
     // Attach a concrete worker: moves it to a dedicated QThread and wires signals.
     // Takes ownership of both worker and the thread.
     void attachWorker(RecorderWorker* worker);
@@ -215,7 +220,7 @@ private:
     Actions*        m_actions        = nullptr;
 
 #ifdef Q_OS_MACOS
-    GlobakHotkeys* m_hotkeyManager = nullptr;
+    GlobalHotkeys* m_hotkeyManager = nullptr;
 #endif
 };
 

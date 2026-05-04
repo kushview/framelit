@@ -13,7 +13,7 @@
 
 #ifdef Q_OS_MAC
 #  include "platform/macos_window.h"
-#  include "globakhotkeys.hpp"
+#  include "globalhotkeys.hpp"
 #endif
 
 #include <QGuiApplication>
@@ -82,6 +82,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::formatChangeRequested,   this, &AppController::onFormatChangeRequested);
     connect(m_controlBar, &ControlBar::audioChangeRequested,       this, &AppController::onAudioChangeRequested);
     connect(m_controlBar, &ControlBar::hiDpiChangeRequested,       this, &AppController::onHiDpiChangeRequested);
+    connect(m_controlBar, &ControlBar::demoModeChangeRequested,    this, &AppController::onDemoModeChangeRequested);
     connect(m_controlBar, &ControlBar::audioDeviceChangeRequested, this, &AppController::onAudioDeviceChangeRequested);
     connect(m_controlBar, &ControlBar::outputDirChangeRequested,   this, &AppController::onOutputDirChangeRequested);
     connect(m_controlBar, &ControlBar::outputSizeChangeRequested,  this, &AppController::onOutputSizeChangeRequested);
@@ -129,12 +130,12 @@ void AppController::start()
     m_captureWindow->setGeometry(m_region.rect);
 
 #ifdef Q_OS_MAC
-    m_hotkeyManager = new GlobakHotkeys(this);
-    connect(m_hotkeyManager, &GlobakHotkeys::growRequested,              this, &AppController::onGrowRequested);
-    connect(m_hotkeyManager, &GlobakHotkeys::shrinkRequested,            this, &AppController::onShrinkRequested);
-    connect(m_hotkeyManager, &GlobakHotkeys::followMouseToggleRequested, this, &AppController::onFollowMouseToggleRequested);
-    connect(m_hotkeyManager, &GlobakHotkeys::recordToggleRequested,      this, &AppController::onRecordToggleRequested);
-    connect(m_hotkeyManager, &GlobakHotkeys::showUiRequested,            this, [this]() {
+    m_hotkeyManager = new GlobalHotkeys(this);
+    connect(m_hotkeyManager, &GlobalHotkeys::growRequested,              this, &AppController::onGrowRequested);
+    connect(m_hotkeyManager, &GlobalHotkeys::shrinkRequested,            this, &AppController::onShrinkRequested);
+    connect(m_hotkeyManager, &GlobalHotkeys::followMouseToggleRequested, this, &AppController::onFollowMouseToggleRequested);
+    connect(m_hotkeyManager, &GlobalHotkeys::recordToggleRequested,      this, &AppController::onRecordToggleRequested);
+    connect(m_hotkeyManager, &GlobalHotkeys::showUiRequested,            this, [this]() {
         setUiVisible(true);
     });
 #endif
@@ -147,6 +148,11 @@ void AppController::start()
     m_captureWindow->show();
     m_centerHandle->show();
     m_controlBar->show();
+
+    // Apply demo mode after each window's showEvent deferred exclude call fires.
+    // singleShot(0) posted here runs after the ones posted inside showEvent().
+    if (m_settings.demoMode)
+        QTimer::singleShot(0, this, [this]() { applyDemoMode(); });
 
     if (SystemTray::isAvailable()) {
         m_actions = new Actions(this);
@@ -243,8 +249,10 @@ void AppController::onStartRequested()
     connect(m_strategy, &RecordingStrategy::encodingFailed,
             this, &AppController::onEncodingFailed);
 
-    const bool demo = m_controlBar && m_controlBar->demoMode();
-    auto* worker = new ScreenCaptureWorker(m_region, m_settings, demo ? QList<WId>{} : QList<WId>{
+    // Always exclude our own windows from the SCK content filter so they never
+    // appear in the captured frames. Demo mode only controls NSWindowSharingType
+    // (visibility to *external* recorders) — it is orthogonal to this list.
+    auto* worker = new ScreenCaptureWorker(m_region, m_settings, {
         m_captureWindow ? m_captureWindow->winId() : WId{0},
         m_centerHandle  ? m_centerHandle->winId()  : WId{0},
         m_controlBar    ? m_controlBar->winId()    : WId{0},
@@ -381,41 +389,46 @@ void AppController::onEncodingFailed(const QString& reason)
 
 void AppController::onFormatChangeRequested(OutputFormat format)
 {
-    if (m_state != AppState::Idle) {
-        syncActions();
-        return;
-    }
+    if (m_state != AppState::Idle) { syncActions(); return; }
     m_settings.format = format;
-    if (m_controlBar)
-        m_controlBar->setFormat(m_settings.format);
     saveSettings();
     syncActions();
 }
 
 void AppController::onAudioChangeRequested(bool captureAudio)
 {
-    if (m_state != AppState::Idle) {
-        syncActions();
-        return;
-    }
+    if (m_state != AppState::Idle) { syncActions(); return; }
     m_settings.captureAudio = captureAudio;
-    if (m_controlBar)
-        m_controlBar->setCaptureAudio(m_settings.captureAudio);
     saveSettings();
     syncActions();
 }
 
 void AppController::onHiDpiChangeRequested(bool hiDpi)
 {
-    if (m_state != AppState::Idle) {
-        syncActions();
-        return;
-    }
+    if (m_state != AppState::Idle) { syncActions(); return; }
     m_settings.hiDpi = hiDpi;
-    if (m_controlBar)
-        m_controlBar->setHiDpi(m_settings.hiDpi);
     saveSettings();
     syncActions();
+}
+
+void AppController::onDemoModeChangeRequested(bool on)
+{
+    m_settings.demoMode = on;
+    applyDemoMode();
+    saveSettings();
+}
+
+void AppController::applyDemoMode()
+{
+#ifdef Q_OS_MACOS
+    const bool exclude = !m_settings.demoMode;
+    for (QWidget* w : { static_cast<QWidget*>(m_captureWindow),
+                        static_cast<QWidget*>(m_centerHandle),
+                        static_cast<QWidget*>(m_controlBar) }) {
+        if (w && w->winId())
+            setWindowCaptureExcluded(reinterpret_cast<void*>(w->winId()), exclude);
+    }
+#endif
 }
 
 void AppController::onLetterboxChangeRequested(bool letterbox)
@@ -479,8 +492,10 @@ void AppController::onScreenshotRequested()
     if (!m_region.screen || m_region.rect.isEmpty())
         return;
 
-    // Hide the center handle so it doesn't appear in the grab, then restore.
+    // Hide all overlay windows so none of them appear in the grab.
     m_centerHandle->hide();
+    m_captureWindow->hide();
+    m_controlBar->hide();
 
     const CaptureRegion region = m_region;
     QTimer::singleShot(50, this, [this, region]() {
@@ -491,7 +506,10 @@ void AppController::onScreenshotRequested()
             region.rect.width(),
             region.rect.height());
 
+        m_captureWindow->show();
         m_centerHandle->show();
+        m_controlBar->show();
+        m_controlBar->snapToRegion(region.rect);
 
         if (px.isNull())
             return;
@@ -563,17 +581,13 @@ void AppController::onFollowMouseChangeRequested(bool enabled)
     m_followMouse = enabled;
     if (m_controlBar)
         m_controlBar->setFollowMouse(enabled);
-    qDebug("[follow-mouse] enabled=%d state=%d", enabled, int(m_state));
     updateFollowTimer();
-    qDebug("[follow-mouse] timer active=%d", m_followTimer->isActive());
     syncActions();
 }
 
 void AppController::onFollowMouseToggleRequested()
 {
     onFollowMouseChangeRequested(!m_followMouse);
-    if (m_controlBar)
-        m_controlBar->setFollowMouse(m_followMouse);
 }
 
 void AppController::onRecordToggleRequested()
@@ -597,10 +611,6 @@ void AppController::onFollowMouseTick()
         return;
 
     const QRect newRect = MousePanner{}.pan(cursor, rect, screenRect);
-    qDebug("[follow-mouse] cursor=(%d,%d) rect=(%d,%d %dx%d) newRect=(%d,%d %dx%d)",
-           cursor.x(), cursor.y(),
-           rect.x(), rect.y(), rect.width(), rect.height(),
-           newRect.x(), newRect.y(), newRect.width(), newRect.height());
 
     if (newRect == rect)
         return;
@@ -674,6 +684,7 @@ void AppController::applySettingsToUI()
     m_controlBar->setHiDpi(m_settings.hiDpi);
     m_controlBar->setCaptureAudio(m_settings.captureAudio);
     m_controlBar->setLetterbox(m_settings.letterbox);
+    m_controlBar->setDemoMode(m_settings.demoMode);
 }
 
 void AppController::loadSettings()

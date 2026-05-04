@@ -39,10 +39,7 @@ public:
     void setCaptureAudio(bool on);
     void setFollowMouse(bool enabled);
     void setLetterbox(bool letterbox);
-
-    // When true the app's own windows are NOT excluded from the SCK capture,
-    // so the capture frame / control bar appear in the recorded output.
-    bool demoMode() const;
+    void setDemoMode(bool on);
 
 signals:
     void startRequested();
@@ -58,6 +55,7 @@ signals:
     void outputSizeChangeRequested(QSize size);
     void growStepChangeRequested(int step);
     void letterboxChangeRequested(bool letterbox);
+    void demoModeChangeRequested(bool on);
     void snapAspectRequested();
 
 public slots:
@@ -90,8 +88,6 @@ private:
 
     static constexpr int kGripSize = 18;  // px square of the resize hit zone
 
-    QLabel*      m_statusLabel     = nullptr;
-    QLabel*      m_dimensionsLabel = nullptr;
     QPushButton* m_formatButton    = nullptr;
     QPushButton* m_audioButton     = nullptr;
     QComboBox*   m_audioDeviceCombo = nullptr;
@@ -102,7 +98,6 @@ private:
     QPushButton* m_settingsButton  = nullptr;
     QPushButton* m_hiDpiButton     = nullptr;
     QPushButton* m_followMouseButton = nullptr;
-    QPushButton* m_demoButton      = nullptr;
     QPushButton* m_closeButton     = nullptr;
 
     OutputFormat m_format      = OutputFormat::Gif;
@@ -110,6 +105,7 @@ private:
     bool         m_hiDpi        = false;
     bool         m_followMouse  = false;
     bool         m_letterbox    = true;
+    bool         m_demoMode     = false;
     AppState m_state = AppState::Idle;
     QString      m_outputDir;
     QSize        m_outputSize = {800, 450};

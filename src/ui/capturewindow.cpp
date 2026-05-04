@@ -58,15 +58,19 @@ CaptureWindow::CaptureWindow(QObject* /*controller*/, QWidget* parent)
                                     Qt::NoBrush);
     m_borderItem->setZValue(1);
 
-    // Dimension label (e.g. "800×450") shown in the top-left corner
-    m_labelItem = m_scene->addSimpleText(QString());
-    QFont labelFont;
-    labelFont.setPointSize(9);
-    m_labelItem->setFont(labelFont);
-    m_labelItem->setBrush(borderColor());
-    m_labelItem->setZValue(2);
-    // hide the dimensions label. redundant saving for later.
-    m_labelItem->setVisible(false);
+    // LCD readout items — bottom-left status, bottom-right dimensions.
+    // Font is monospaced for that segment-display feel.
+    QFont lcdFont;
+    lcdFont.setPointSize(9);
+    lcdFont.setFamily("Menlo");
+
+    m_statusItem = m_scene->addSimpleText(QString());
+    m_statusItem->setFont(lcdFont);
+    m_statusItem->setZValue(2);
+
+    m_dimsItem = m_scene->addSimpleText(QString());
+    m_dimsItem->setFont(lcdFont);
+    m_dimsItem->setZValue(2);
 
     setGeometry(0, 0, 800, 450);  // placeholder; AppController sets real position
     updateSceneGeometry();
@@ -113,6 +117,14 @@ void CaptureWindow::onStateChanged(sc::AppState state)
 
     // Update border/handle colors and handle visibility — no repaint needed;
     // QGraphicsItem::setPen/setBrush triggers only the affected item's redraw.
+    if (m_statusItem) {
+        switch (state) {
+        case AppState::Recording:  m_statusItem->setText("REC");  break;
+        case AppState::Paused:     m_statusItem->setText("PAUSE"); break;
+        case AppState::Processing: m_statusItem->setText("...");   break;
+        default:                   m_statusItem->setText("READY"); break;
+        }
+    }
     updateSceneGeometry();
 }
 
@@ -123,6 +135,9 @@ void CaptureWindow::onRegionChanged(const sc::CaptureRegion& region)
     m_suppressSignal = true;
     setGeometry(region.rect);
     m_suppressSignal = false;
+
+    if (m_dimsItem)
+        m_dimsItem->setText(region.dimensionsString());
 }
 
 // ---------------------------------------------------------------------------
@@ -134,19 +149,27 @@ void CaptureWindow::updateSceneGeometry()
     const qreal w  = width();
     const qreal ht = height();
     const qreal bw = kBorderWidth;
+    const QColor c = borderColor();
 
     setSceneRect(0, 0, w, ht);
 
-    // Border
     m_borderItem->setRect(QRectF(bw / 2.0, bw / 2.0, w - bw, ht - bw));
-    m_borderItem->setPen(QPen(borderColor(), bw));
+    m_borderItem->setPen(QPen(c, bw));
 
-    // Dimension label — color follows state, positioned just inside top-left corner
-    const QColor bc = borderColor();
-    m_labelItem->setBrush(bc);
-    m_labelItem->setText(QString("%1\xc3\x97%2").arg(int(w)).arg(int(ht)));
-    m_labelItem->setPos(bw + 4, bw + 4);
+    // Dim the readout color slightly from the border so it reads as secondary
+    const QColor lcd = c.darker(115);
+    const qreal margin = bw + 4;
 
+    // Status — bottom-left
+    m_statusItem->setBrush(lcd);
+    const qreal sh = m_statusItem->boundingRect().height();
+    m_statusItem->setPos(margin, ht - margin - sh);
+
+    // Dimensions — bottom-right
+    m_dimsItem->setBrush(lcd);
+    const qreal dw = m_dimsItem->boundingRect().width();
+    const qreal dh = m_dimsItem->boundingRect().height();
+    m_dimsItem->setPos(w - margin - dw, ht - margin - dh);
 }
 
 // resizeEvent and moveEvent fire after macOS has committed the window

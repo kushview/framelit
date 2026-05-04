@@ -55,11 +55,11 @@ if(APPLE)
     list(APPEND SOURCES
         src/platform/macos_window.mm
         src/platform/sckbackend.mm
-        src/globakhotkeys.mm
+        src/globalhotkeys.mm
     )
 else()
     list(APPEND SOURCES
-        src/globakhotkeys.cpp
+        src/globalhotkeys.cpp
         src/platform/qtscreenbackend.cpp
     )
 endif()
@@ -84,7 +84,7 @@ if(APPLE)
     list(APPEND HEADERS
         src/platform/sckbackend.hpp
         src/platform/macos_window.h
-        src/globakhotkeys.hpp
+        src/globalhotkeys.hpp
     )
 else()
     list(APPEND HEADERS src/platform/qtscreenbackend.hpp)

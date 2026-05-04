@@ -27,8 +27,6 @@
 #include <windows.h>
 #endif
 
-#define SC_USE_DEMO_MODE 0
-
 namespace sc {
 
 static constexpr int kBarHeight  = 36;
@@ -69,11 +67,6 @@ ControlBar::ControlBar(CaptureWindow* captureWindow, QWidget* parent)
 #endif
 }
 
-bool ControlBar::demoMode() const
-{
-    return m_demoButton && m_demoButton->isChecked();
-}
-
 // ---------------------------------------------------------------------------
 // Layout
 // ---------------------------------------------------------------------------
@@ -83,16 +76,6 @@ void ControlBar::buildUi()
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins(8, 0, 8, 0);
     layout->setSpacing(6);
-
-    m_statusLabel = new QLabel("● Ready", this);
-    m_statusLabel->setStyleSheet("color: #94a3b8; font-size: 12px;");
-    layout->addWidget(m_statusLabel);
-
-    layout->addSpacing(4);
-
-    m_dimensionsLabel = new QLabel("800×450", this);
-    m_dimensionsLabel->setStyleSheet("color: #cbd5e1; font-size: 12px; font-family: monospace;");
-    layout->addWidget(m_dimensionsLabel);
 
     layout->addStretch();
 
@@ -175,25 +158,6 @@ void ControlBar::buildUi()
     m_stopButton->setVisible(false);
     connect(m_stopButton, &QPushButton::clicked, this, &ControlBar::stopRequested);
     layout->addWidget(m_stopButton);
-#if SC_USE_DEMO_MODE
-    m_demoButton = new QPushButton("Demo", this);
-    m_demoButton->setCheckable(true);
-    m_demoButton->setChecked(false);
-    m_demoButton->setToolTip("Include capture frame in recording (for demos)");
-    m_demoButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 8px; }"
-        "QPushButton:checked { color: #1e2029; background-color: #facc15; border-color: #facc15; font-weight: bold; }"
-        "QPushButton:hover { border-color: #64748b; }");
-    connect(m_demoButton, &QPushButton::toggled, this, [this](bool demo) {
-        // Toggle NSWindowSharingNone so all screen recorders (QuickTime etc.) see/hide us.
-        auto exclude = [](WId wid, bool ex) {
-            setWindowCaptureExcluded(reinterpret_cast<void*>(wid), ex);
-        };
-        if (m_captureWindow) exclude(m_captureWindow->winId(), !demo);
-        exclude(winId(), !demo);
-    });
-    layout->addWidget(m_demoButton);
-#endif
 
     m_hiDpiButton = new QPushButton("2×", this);
     m_hiDpiButton->setCheckable(true);
@@ -293,6 +257,12 @@ void ControlBar::buildUi()
         letterboxCheck->setToolTip("When checked, black bars fill any aspect-ratio gap. When unchecked, the frame is stretched to fill the output.");
         form->addRow("Scaling:", letterboxCheck);
 
+        // Demo mode
+        auto* demoCheck = new QCheckBox("Allow border and controls to be captured by external apps", dlg);
+        demoCheck->setChecked(m_demoMode);
+        demoCheck->setToolTip("When checked, the capture border and control bar are visible to external screen recorders and capture tools.");
+        form->addRow("Demo mode:", demoCheck);
+
         vlay->addLayout(form);
 
         connect(browseBtn, &QPushButton::clicked, dlg, [dirEdit, dlg]() {
@@ -304,7 +274,7 @@ void ControlBar::buildUi()
 
         auto* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dlg);
-        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions, growStepSpin, letterboxCheck]() {
+        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions, growStepSpin, letterboxCheck, demoCheck]() {
             const QString dir = dirEdit->text();
             if (dir != m_outputDir) {
                 m_outputDir = dir;
@@ -324,6 +294,11 @@ void ControlBar::buildUi()
             if (lb != m_letterbox) {
                 m_letterbox = lb;
                 emit letterboxChangeRequested(m_letterbox);
+            }
+            const bool demo = demoCheck->isChecked();
+            if (demo != m_demoMode) {
+                m_demoMode = demo;
+                emit demoModeChangeRequested(m_demoMode);
             }
             dlg->accept();
         });
@@ -377,6 +352,11 @@ void ControlBar::setFollowMouse(bool enabled)
 void ControlBar::setLetterbox(bool letterbox)
 {
     m_letterbox = letterbox;
+}
+
+void ControlBar::setDemoMode(bool on)
+{
+    m_demoMode = on;
 }
 
 void ControlBar::setOutputDir(const QString& dir)
@@ -464,7 +444,6 @@ void ControlBar::onStateChanged(sc::AppState state)
 
 void ControlBar::onRegionChanged(const sc::CaptureRegion& region)
 {
-    m_dimensionsLabel->setText(region.dimensionsString());
     m_snapButton->setText(region.rect.width() >= region.rect.height() ? "16:9" : "9:16");
     snapToRegion(region.rect);
 }
@@ -477,8 +456,6 @@ void ControlBar::updateUiForState(AppState state)
 {
     switch (state) {
     case AppState::Idle:
-        m_statusLabel->setText("● Ready");
-        m_statusLabel->setStyleSheet("color: #94a3b8; font-size: 12px;");
         m_recordButton->setVisible(true);
         m_pauseButton->setVisible(false);
         m_stopButton->setVisible(false);
@@ -489,8 +466,6 @@ void ControlBar::updateUiForState(AppState state)
         break;
 
     case AppState::Recording:
-        m_statusLabel->setText("⏺ Recording");
-        m_statusLabel->setStyleSheet("color: #ef4444; font-size: 12px;");
         m_recordButton->setVisible(false);
         m_pauseButton->setText("Pause");
         m_pauseButton->setVisible(true);
@@ -502,14 +477,10 @@ void ControlBar::updateUiForState(AppState state)
         break;
 
     case AppState::Paused:
-        m_statusLabel->setText("⏸ Paused");
-        m_statusLabel->setStyleSheet("color: #facc15; font-size: 12px;");
         m_pauseButton->setText("Resume");
         break;
 
     case AppState::Processing:
-        m_statusLabel->setText("⏳ Processing…");
-        m_statusLabel->setStyleSheet("color: #94a3b8; font-size: 12px;");
         m_recordButton->setVisible(false);
         m_pauseButton->setVisible(false);
         m_stopButton->setVisible(false);

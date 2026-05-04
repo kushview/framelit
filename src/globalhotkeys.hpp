@@ -8,12 +8,12 @@ namespace sc {
 // Requires Accessibility permission (System Settings > Privacy > Accessibility).
 // If permission is not granted the tap is silently skipped and signals are
 // never emitted — the app continues to work without global hotkeys.
-class GlobakHotkeys : public QObject {
+class GlobalHotkeys : public QObject {
     Q_OBJECT
 
 public:
-    explicit GlobakHotkeys(QObject* parent = nullptr);
-    ~GlobakHotkeys() override;
+    explicit GlobalHotkeys(QObject* parent = nullptr);
+    ~GlobalHotkeys() override;
 
 signals:
     void growRequested();

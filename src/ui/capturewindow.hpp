@@ -52,9 +52,10 @@ private:
     // view geometry and AppState. Called on resize and state change.
     void updateSceneGeometry();
 
-    QGraphicsScene*          m_scene      = nullptr;
-    QGraphicsRectItem*       m_borderItem = nullptr;
-    QGraphicsSimpleTextItem* m_labelItem  = nullptr;
+    QGraphicsScene*          m_scene        = nullptr;
+    QGraphicsRectItem*       m_borderItem   = nullptr;
+    QGraphicsSimpleTextItem* m_statusItem   = nullptr;  // bottom-left LCD readout
+    QGraphicsSimpleTextItem* m_dimsItem     = nullptr;  // bottom-right LCD readout
 
     AppState m_state          = AppState::Idle;
     bool     m_flashActive    = false;
