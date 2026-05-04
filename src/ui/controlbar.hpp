@@ -98,7 +98,6 @@ private:
     QPushButton* m_settingsButton  = nullptr;
     QPushButton* m_hiDpiButton     = nullptr;
     QPushButton* m_followMouseButton = nullptr;
-    QPushButton* m_closeButton     = nullptr;
 
     OutputFormat m_format      = OutputFormat::Gif;
     bool         m_captureAudio = false;

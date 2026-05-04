@@ -225,22 +225,36 @@ void ControlBar::buildUi()
         dirRow->addWidget(browseBtn);
         form->addRow("Output folder:", dirRow);
 
-        // Output size
-        struct SizeOption { QString label; QSize size; };
-        const QList<SizeOption> sizeOptions = {
-            { "640\u00d7360",   {640,  360} },
-            { "800\u00d7450",   {800,  450} },
-            { "1280\u00d7720",  {1280, 720} },
-            { "1920\u00d71080", {1920, 1080} },
+        // Output size — sizes stored as QVariant(QSize) user data so separators
+        // don't disturb index-based lookup.
+        auto addSize = [](QComboBox* cb, const QString& label, QSize size) {
+            cb->addItem(label, QVariant::fromValue(size));
         };
         auto* sizeCombo = new QComboBox(dlg);
-        int currentSizeIndex = 1; // default to 800×450
-        for (int i = 0; i < sizeOptions.size(); ++i) {
-            sizeCombo->addItem(sizeOptions[i].label);
-            if (sizeOptions[i].size == m_outputSize)
-                currentSizeIndex = i;
+        // 16:9 landscape
+        addSize(sizeCombo, "640\u00d7360",   {640,  360});
+        addSize(sizeCombo, "800\u00d7450",   {800,  450});
+        addSize(sizeCombo, "1280\u00d7720",  {1280, 720});
+        addSize(sizeCombo, "1920\u00d71080", {1920, 1080});
+        // 9:16 portrait
+        sizeCombo->insertSeparator(sizeCombo->count());
+        addSize(sizeCombo, "360\u00d7640",   {360,  640});
+        addSize(sizeCombo, "450\u00d7800",   {450,  800});
+        addSize(sizeCombo, "720\u00d71280",  {720,  1280});
+        addSize(sizeCombo, "1080\u00d71920", {1080, 1920});
+        // Common GIF sizes
+        sizeCombo->insertSeparator(sizeCombo->count());
+        addSize(sizeCombo, "320\u00d7180 (GIF)",  {320, 180});
+        addSize(sizeCombo, "480\u00d7270 (GIF)",  {480, 270});
+        addSize(sizeCombo, "320\u00d7240 (GIF)",  {320, 240});
+        addSize(sizeCombo, "480\u00d7360 (GIF)",  {480, 360});
+        // Select current
+        for (int i = 0; i < sizeCombo->count(); ++i) {
+            if (sizeCombo->itemData(i).value<QSize>() == m_outputSize) {
+                sizeCombo->setCurrentIndex(i);
+                break;
+            }
         }
-        sizeCombo->setCurrentIndex(currentSizeIndex);
         form->addRow("Output size:", sizeCombo);
 
         // Grow/shrink step
@@ -274,13 +288,13 @@ void ControlBar::buildUi()
 
         auto* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dlg);
-        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, sizeOptions, growStepSpin, letterboxCheck, demoCheck]() {
+        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, growStepSpin, letterboxCheck, demoCheck]() {
             const QString dir = dirEdit->text();
             if (dir != m_outputDir) {
                 m_outputDir = dir;
                 emit outputDirChangeRequested(m_outputDir);
             }
-            const QSize size = sizeOptions[sizeCombo->currentIndex()].size;
+            const QSize size = sizeCombo->currentData().value<QSize>();
             if (size != m_outputSize) {
                 m_outputSize = size;
                 emit outputSizeChangeRequested(m_outputSize);
@@ -308,11 +322,6 @@ void ControlBar::buildUi()
         dlg->exec();
     });
     layout->addWidget(m_settingsButton);
-
-    m_closeButton = new QPushButton("\u2715", this);
-    m_closeButton->setFixedWidth(28);
-    connect(m_closeButton, &QPushButton::clicked, qApp, &QApplication::quit);
-    layout->addWidget(m_closeButton);
 
     // Resize grip — a small visual indicator at the right edge of the bar.
     // Hit zone is kGripSize px wide; cursor changes on hover.
