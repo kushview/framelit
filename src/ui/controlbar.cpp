@@ -3,21 +3,13 @@
 
 #include <QApplication>
 #include <QAudioDevice>
-#include <QCheckBox>
 #include <QComboBox>
-#include <QDialog>
-#include <QDialogButtonBox>
-#include <QFileDialog>
-#include <QFormLayout>
-#include <QLineEdit>
-#include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMediaDevices>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScreen>
-#include <QSpinBox>
 #include <QTimer>
 
 #ifdef Q_OS_MACOS
@@ -204,123 +196,7 @@ void ControlBar::buildUi()
         "QPushButton { color: #94a3b8; border: none; background: transparent; font-size: 14px; }"
         "QPushButton:hover { color: #e2e8f0; }"
         "QPushButton:disabled { color: #475569; }");
-    connect(m_settingsButton, &QPushButton::clicked, this, [this]() {
-        auto* dlg = new QDialog(this);
-        dlg->setWindowTitle("Preferences");
-        dlg->setAttribute(Qt::WA_DeleteOnClose);
-        dlg->setWindowFlags(dlg->windowFlags() | Qt::WindowStaysOnTopHint);
-
-        auto* vlay = new QVBoxLayout(dlg);
-        vlay->setSpacing(12);
-
-        auto* form = new QFormLayout;
-
-        // Output folder
-        auto* dirEdit = new QLineEdit(m_outputDir, dlg);
-        dirEdit->setMinimumWidth(300);
-        dirEdit->setReadOnly(true);
-        auto* browseBtn = new QPushButton("Browse\u2026", dlg);
-        auto* dirRow = new QHBoxLayout;
-        dirRow->addWidget(dirEdit);
-        dirRow->addWidget(browseBtn);
-        form->addRow("Output folder:", dirRow);
-
-        // Output size — sizes stored as QVariant(QSize) user data so separators
-        // don't disturb index-based lookup.
-        auto addSize = [](QComboBox* cb, const QString& label, QSize size) {
-            cb->addItem(label, QVariant::fromValue(size));
-        };
-        auto* sizeCombo = new QComboBox(dlg);
-        // 16:9 landscape
-        addSize(sizeCombo, "640\u00d7360",   {640,  360});
-        addSize(sizeCombo, "800\u00d7450",   {800,  450});
-        addSize(sizeCombo, "1280\u00d7720",  {1280, 720});
-        addSize(sizeCombo, "1920\u00d71080", {1920, 1080});
-        // 9:16 portrait
-        sizeCombo->insertSeparator(sizeCombo->count());
-        addSize(sizeCombo, "360\u00d7640",   {360,  640});
-        addSize(sizeCombo, "450\u00d7800",   {450,  800});
-        addSize(sizeCombo, "720\u00d71280",  {720,  1280});
-        addSize(sizeCombo, "1080\u00d71920", {1080, 1920});
-        // Common GIF sizes
-        sizeCombo->insertSeparator(sizeCombo->count());
-        addSize(sizeCombo, "320\u00d7180 (GIF)",  {320, 180});
-        addSize(sizeCombo, "480\u00d7270 (GIF)",  {480, 270});
-        addSize(sizeCombo, "320\u00d7240 (GIF)",  {320, 240});
-        addSize(sizeCombo, "480\u00d7360 (GIF)",  {480, 360});
-        // Select current
-        for (int i = 0; i < sizeCombo->count(); ++i) {
-            if (sizeCombo->itemData(i).value<QSize>() == m_outputSize) {
-                sizeCombo->setCurrentIndex(i);
-                break;
-            }
-        }
-        form->addRow("Output size:", sizeCombo);
-
-        // Grow/shrink step
-        auto* growStepSpin = new QSpinBox(dlg);
-        growStepSpin->setRange(1, 200);
-        growStepSpin->setSuffix(" px");
-        growStepSpin->setValue(m_growStep);
-        growStepSpin->setToolTip("Pixels added or removed per grow/shrink hotkey press");
-        form->addRow("Grow/shrink step:", growStepSpin);
-
-        // Letterbox vs fill
-        auto* letterboxCheck = new QCheckBox("Letterbox (preserve aspect ratio)", dlg);
-        letterboxCheck->setChecked(m_letterbox);
-        letterboxCheck->setToolTip("When checked, black bars fill any aspect-ratio gap. When unchecked, the frame is stretched to fill the output.");
-        form->addRow("Scaling:", letterboxCheck);
-
-        // Demo mode
-        auto* demoCheck = new QCheckBox("Allow border and controls to be captured by external apps", dlg);
-        demoCheck->setChecked(m_demoMode);
-        demoCheck->setToolTip("When checked, the capture border and control bar are visible to external screen recorders and capture tools.");
-        form->addRow("Demo mode:", demoCheck);
-
-        vlay->addLayout(form);
-
-        connect(browseBtn, &QPushButton::clicked, dlg, [dirEdit, dlg]() {
-            const QString dir = QFileDialog::getExistingDirectory(
-                dlg, "Choose Output Folder", dirEdit->text());
-            if (!dir.isEmpty())
-                dirEdit->setText(dir);
-        });
-
-        auto* buttons = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dlg);
-        connect(buttons, &QDialogButtonBox::accepted, dlg, [this, dlg, dirEdit, sizeCombo, growStepSpin, letterboxCheck, demoCheck]() {
-            const QString dir = dirEdit->text();
-            if (dir != m_outputDir) {
-                m_outputDir = dir;
-                emit outputDirChangeRequested(m_outputDir);
-            }
-            const QSize size = sizeCombo->currentData().value<QSize>();
-            if (size != m_outputSize) {
-                m_outputSize = size;
-                emit outputSizeChangeRequested(m_outputSize);
-            }
-            const int step = growStepSpin->value();
-            if (step != m_growStep) {
-                m_growStep = step;
-                emit growStepChangeRequested(m_growStep);
-            }
-            const bool lb = letterboxCheck->isChecked();
-            if (lb != m_letterbox) {
-                m_letterbox = lb;
-                emit letterboxChangeRequested(m_letterbox);
-            }
-            const bool demo = demoCheck->isChecked();
-            if (demo != m_demoMode) {
-                m_demoMode = demo;
-                emit demoModeChangeRequested(m_demoMode);
-            }
-            dlg->accept();
-        });
-        connect(buttons, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
-        vlay->addWidget(buttons);
-
-        dlg->exec();
-    });
+    connect(m_settingsButton, &QPushButton::clicked, this, &ControlBar::preferencesRequested);
     layout->addWidget(m_settingsButton);
 
     // Resize grip — a small visual indicator at the right edge of the bar.

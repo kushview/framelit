@@ -48,6 +48,7 @@ set(SOURCES
     src/ui/controlbar.cpp
     src/ui/systemtray.cpp
     src/ui/actions.cpp
+    src/ui/preferencesdialog.cpp
     src/platform/screencapturebackend.hpp
 )
 

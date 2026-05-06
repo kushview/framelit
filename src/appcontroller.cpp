@@ -9,6 +9,7 @@
 #include "ui/capturewindow.hpp"
 #include "ui/centerhandle.hpp"
 #include "ui/controlbar.hpp"
+#include "ui/preferencesdialog.hpp"
 
 #include <QCursor>
 
@@ -89,6 +90,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
     connect(m_controlBar, &ControlBar::letterboxChangeRequested,    this, &AppController::onLetterboxChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
+    connect(m_controlBar, &ControlBar::preferencesRequested,       this, &AppController::onPreferencesRequested);
 
     applySettingsToUI();
 
@@ -167,6 +169,7 @@ void AppController::start()
         connect(m_actions, &Actions::hiDpiChangeRequested,     this, &AppController::onHiDpiChangeRequested);
         connect(m_actions, &Actions::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
         connect(m_actions, &Actions::snapAspectRequested,      this, &AppController::onSnapAspectRequested);
+        connect(m_actions, &Actions::preferencesRequested,     this, &AppController::onPreferencesRequested);
         connect(m_actions, &Actions::quitRequested,            []() { QApplication::quit(); });
 
         m_tray = new SystemTray(m_actions, this);
@@ -481,6 +484,36 @@ void AppController::onSnapAspectRequested()
     else
         r.setWidth(r.height() * 9 / 16);
     onRegionChanged(r);
+}
+
+void AppController::onPreferencesRequested()
+{
+    openPreferencesDialog();
+}
+
+void AppController::openPreferencesDialog()
+{
+    auto* dlg = new PreferencesDialog(m_settings, nullptr);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &PreferencesDialog::outputDirChangeRequested,  this, &AppController::onOutputDirChangeRequested);
+    connect(dlg, &PreferencesDialog::outputSizeChangeRequested, this, &AppController::onOutputSizeChangeRequested);
+    connect(dlg, &PreferencesDialog::growStepChangeRequested,   this, &AppController::onGrowStepChangeRequested);
+    connect(dlg, &PreferencesDialog::letterboxChangeRequested,  this, &AppController::onLetterboxChangeRequested);
+    connect(dlg, &PreferencesDialog::demoModeChangeRequested,   this, &AppController::onDemoModeChangeRequested);
+
+    // Hide capture UI while the dialog is open; restore only what was visible.
+    const bool captureWasVisible = m_captureWindow && m_captureWindow->isVisible();
+    const bool barWasVisible     = m_controlBar    && m_controlBar->isVisible();
+    const bool handleWasVisible  = m_centerHandle  && m_centerHandle->isVisible();
+    if (m_captureWindow) m_captureWindow->hide();
+    if (m_controlBar)    m_controlBar->hide();
+    if (m_centerHandle)  m_centerHandle->hide();
+
+    dlg->exec();
+
+    if (captureWasVisible) m_captureWindow->show();
+    if (barWasVisible)     m_controlBar->show();
+    if (handleWasVisible)  m_centerHandle->show();
 }
 
 void AppController::onGrowRequested()   { applyResizeDelta(+m_settings.growStep); }

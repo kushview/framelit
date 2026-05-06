@@ -57,6 +57,7 @@ signals:
     void letterboxChangeRequested(bool letterbox);
     void demoModeChangeRequested(bool on);
     void snapAspectRequested();
+    void preferencesRequested();
 
 public slots:
     void onStateChanged(sc::AppState state);

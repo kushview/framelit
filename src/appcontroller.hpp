@@ -173,6 +173,7 @@ public slots:
     void onRecordToggleRequested();
     void onFollowMouseTick();
     void onSnapAspectRequested();
+    void onPreferencesRequested();
     void onGrowRequested();
     void onShrinkRequested();
     void onScreenshotRequested();
@@ -199,6 +200,7 @@ private:
     void setUiVisible(bool visible);
     void toggleUiVisible();
     void syncActions();  // calls m_actions->sync() with current state
+    void openPreferencesDialog();  // create, connect, and exec PreferencesDialog
 
     AppState m_state = AppState::Idle;
     CaptureRegion m_region;

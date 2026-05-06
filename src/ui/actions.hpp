@@ -53,6 +53,7 @@ public:
 
     // One-shot actions
     QAction* snapAspect  = nullptr;   // snap region to nearest 16:9 / 9:16
+    QAction* preferences = nullptr;   // open the Preferences dialog
     QAction* showHide    = nullptr;   // toggle capture UI window visibility
     QAction* quit        = nullptr;   // quit the application
 
@@ -66,6 +67,7 @@ signals:
     void hiDpiChangeRequested(bool on);
     void followMouseChangeRequested(bool on);
     void snapAspectRequested();
+    void preferencesRequested();
     void quitRequested();
 
 private:

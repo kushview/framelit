@@ -35,6 +35,7 @@ Actions::Actions(QObject* parent)
 
     // One-shot actions
     snapAspect  = new QAction(QStringLiteral("Snap Aspect (16:9 / 9:16)"), this);
+    preferences = new QAction(QStringLiteral("Preferences\u2026"), this);
     showHide    = new QAction(QString(), this);
     quit        = new QAction(QStringLiteral("Quit"), this);
 
@@ -44,6 +45,7 @@ Actions::Actions(QObject* parent)
     connect(stop,        &QAction::triggered, this, &Actions::stopRequested);
     connect(showHide,    &QAction::triggered, this, &Actions::toggleUiRequested);
     connect(snapAspect,  &QAction::triggered, this, &Actions::snapAspectRequested);
+    connect(preferences, &QAction::triggered, this, &Actions::preferencesRequested);
     connect(quit,        &QAction::triggered, this, &Actions::quitRequested);
 
     connect(formatGif, &QAction::triggered, this,
