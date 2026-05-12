@@ -45,6 +45,7 @@ set(SOURCES
     src/encoding/videoencoder.cpp
     src/ui/capturewindow.cpp
     src/ui/centerhandle.cpp
+    src/ui/closebutton.cpp
     src/ui/controlbar.cpp
     src/ui/systemtray.cpp
     src/ui/actions.cpp
@@ -78,6 +79,7 @@ set(HEADERS
     src/platform/screencapturebackend.hpp
     src/ui/capturewindow.hpp
     src/ui/centerhandle.hpp
+    src/ui/closebutton.hpp
     src/ui/controlbar.hpp
 )
 

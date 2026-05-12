@@ -8,6 +8,7 @@
 #include "outputpath.hpp"
 #include "ui/capturewindow.hpp"
 #include "ui/centerhandle.hpp"
+#include "ui/closebutton.hpp"
 #include "ui/controlbar.hpp"
 #include "ui/preferencesdialog.hpp"
 
@@ -72,6 +73,7 @@ void AppController::start()
 
     m_captureWindow = new CaptureWindow(this);
     m_centerHandle  = new CenterHandle();
+    m_closeButton   = new CloseButton();
     m_controlBar    = new ControlBar(m_captureWindow);
 
     // Wire control bar buttons → controller slots
@@ -102,6 +104,7 @@ void AppController::start()
     });
     connect(this, &AppController::regionChanged, m_captureWindow, &CaptureWindow::onRegionChanged);
     connect(this, &AppController::regionChanged, m_centerHandle,  &CenterHandle::onRegionChanged);
+    connect(this, &AppController::regionChanged, m_closeButton,   &CloseButton::onRegionChanged);
     connect(this, &AppController::regionChanged, m_controlBar,    &ControlBar::onRegionChanged);
 
     // Center handle drag moves the whole capture region while the frame is click-through.
@@ -123,6 +126,11 @@ void AppController::start()
     });
     connect(m_centerHandle, &CenterHandle::screenshotRequested, this, &AppController::onScreenshotRequested);
     connect(m_centerHandle, &CenterHandle::screenshotRequested, m_captureWindow, &CaptureWindow::flashGreen);
+
+    // Close button hides the UI
+    connect(m_closeButton, &CloseButton::closeRequested, this, [this]() {
+        setUiVisible(false);
+    });
 
     // Wire capture window drag/resize → controller
     connect(m_captureWindow, &CaptureWindow::regionChanged, this, &AppController::onRegionChanged);
@@ -201,20 +209,23 @@ void AppController::syncActions()
 
 void AppController::setUiVisible(bool visible)
 {
-    if (!m_captureWindow || !m_centerHandle || !m_controlBar)
+    if (!m_captureWindow || !m_centerHandle || !m_closeButton || !m_controlBar)
         return;
 
     if (visible) {
         m_captureWindow->show();
         m_centerHandle->show();
+        m_closeButton->show();
         m_controlBar->show();
         m_controlBar->snapToRegion(m_region.rect);
         m_captureWindow->raise();
         m_centerHandle->raise();
+        m_closeButton->raise();
         m_controlBar->raise();
     } else {
         m_controlBar->hide();
         m_centerHandle->hide();
+        m_closeButton->hide();
         m_captureWindow->hide();
     }
 
@@ -594,14 +605,17 @@ void AppController::updateFollowTimer()
 
 void AppController::syncCenterHandleVisibility()
 {
-    if (!m_centerHandle || !m_captureWindow || !m_controlBar)
+    if (!m_centerHandle || !m_closeButton || !m_captureWindow || !m_controlBar)
         return;
 
     const bool uiVisible = m_captureWindow->isVisible() && m_controlBar->isVisible();
     const bool showHandle = uiVisible;
     m_centerHandle->setVisible(showHandle);
-    if (showHandle)
+    m_closeButton->setVisible(showHandle);
+    if (showHandle) {
         m_centerHandle->raise();
+        m_closeButton->raise();
+    }
 }
 
 void AppController::onFollowMouseChangeRequested(bool enabled)

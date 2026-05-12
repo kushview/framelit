@@ -128,6 +128,7 @@ struct RecordingSettings {
 
 class CaptureWindow;
 class CenterHandle;
+class CloseButton;
 class ControlBar;
 class RecorderWorker;
 class RecordingStrategy;
@@ -212,6 +213,7 @@ private:
 
     CaptureWindow*     m_captureWindow  = nullptr;
     CenterHandle*      m_centerHandle   = nullptr;
+    CloseButton*       m_closeButton    = nullptr;
     ControlBar*        m_controlBar     = nullptr;
     RecorderWorker*    m_worker         = nullptr;
     QThread*           m_workerThread   = nullptr;
