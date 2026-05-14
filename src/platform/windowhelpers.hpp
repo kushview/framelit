@@ -23,4 +23,9 @@ void setupOverlayWindowOnShow(WId wid);
 static constexpr int kOverlayWindowLevel = 3;        // NSFloatingWindowLevel
 static constexpr int kStatusWindowLevel = 25;        // NSStatusWindowLevel
 
+// Sets the window to be click-through (ignores mouse events) or not, in a platform-agnostic way.
+// On macOS, wid is cast to void* and passed to the native implementation.
+// On X11, calls the X11 implementation. On other platforms, this is a no-op.
+void setWindowClickThrough(WId wid, bool enabled);
+
 } // namespace sc

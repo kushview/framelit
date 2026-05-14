@@ -31,4 +31,18 @@ void setupOverlayWindowOnShow(WId wid)
     // via XShape in setWindowClickThrough() which is called elsewhere as needed.
 }
 
+void setWindowClickThrough(WId wid, bool enabled)
+{
+#ifdef Q_OS_MACOS
+    void* nativeHandle = reinterpret_cast<void*>(wid);
+    ::setWindowClickThrough(nativeHandle, enabled);
+#elif defined(Q_OS_LINUX)
+    sc::setWindowClickThrough(wid, enabled); // X11 implementation
+#else
+    // No-op on other platforms for now
+    (void)wid;
+    (void)enabled;
+#endif
+}
+
 } // namespace sc

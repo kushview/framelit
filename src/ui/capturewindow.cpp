@@ -9,6 +9,7 @@
 #include <QPen>
 #include <QTimer>
 
+
 #include "../platform/windowhelpers.hpp"
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -95,12 +96,9 @@ void CaptureWindow::onStateChanged(sc::AppState state)
     //   Linux/X11: XShape input region set to empty
     const bool passthrough = true;
     setAttribute(Qt::WA_TransparentForMouseEvents, passthrough);
-#ifdef Q_OS_MACOS
-    setWindowClickThrough(reinterpret_cast<void*>(winId()), passthrough);
-#endif
-#ifdef Q_OS_LINUX
+#include "../platform/windowhelpers.hpp"
+
     sc::setWindowClickThrough(winId(), passthrough);
-#endif
 #ifdef Q_OS_WIN
     HWND hwnd = reinterpret_cast<HWND>(winId());
     LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);

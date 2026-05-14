@@ -13,6 +13,5 @@ namespace sc {
 //
 // Must be called on the main thread. No-op if the X SHAPE extension is
 // not available on the current display.
-void setWindowClickThrough(WId wid, bool enabled);
 
 } // namespace sc
