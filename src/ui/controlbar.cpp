@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QAudioDevice>
 #include <QComboBox>
+#include <QDebug>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMediaDevices>
@@ -53,8 +54,15 @@ ControlBar::ControlBar(CaptureWindow* captureWindow, QWidget* parent)
     m_snapTimer->start(16);
 
 #ifdef Q_OS_WIN
-    QTimer::singleShot(0, this, [hwnd = reinterpret_cast<HWND>(winId())]() {
-        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+    QTimer::singleShot(0, this, [this]() {
+        HWND hwnd = reinterpret_cast<HWND>(winId());
+        if (hwnd) {
+            BOOL result = SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+            if (!result)
+                qWarning("[ControlBar] SetWindowDisplayAffinity failed");
+            else
+                qDebug("[ControlBar] Excluded from capture");
+        }
     });
 #endif
 }

@@ -1,6 +1,7 @@
 #include "capturewindow.hpp"
 
 #include <QColor>
+#include <QDebug>
 #include <QFont>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
@@ -185,8 +186,15 @@ void CaptureWindow::showEvent(QShowEvent* event)
     });
 #endif
 #ifdef Q_OS_WIN
-    QTimer::singleShot(0, this, [hwnd = reinterpret_cast<HWND>(winId())]() {
-        SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+    QTimer::singleShot(0, this, [this]() {
+        HWND hwnd = reinterpret_cast<HWND>(winId());
+        if (hwnd) {
+            BOOL result = SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+            if (!result)
+                qWarning("[CaptureWindow] SetWindowDisplayAffinity failed");
+            else
+                qDebug("[CaptureWindow] Excluded from capture");
+        }
     });
 #endif
 }

@@ -143,8 +143,8 @@ The backend is partially constructed on the main thread (NSView access for `setE
 | 18 | `src/appcontroller.cpp` | Sequential permission requests — if screen recording denied, accessibility permission never requested until next launch |
 | 19 | `src/appcontroller.cpp` | `onRegionChanged()` does not clamp rect to screen bounds; dragging off-screen causes silent capture failure |
 | 20 | `src/ui/capturewindow.hpp` | `lockedAspect()` is public but consumed only by `ControlBar` — encapsulation leak; should be package-private or removed in favour of a signal |
-| 21 | `src/platform/qtscreenbackend.cpp` | Cursor compositing is `#if 0`'d — remove dead code or replace with a `// TODO:` comment |
-| 22 | `src/platform/sckbackend.mm` | Same cursor dead code (`#if 0`) — same recommendation |
+| 21 | `src/platform/qtscreenbackend.cpp` | ~~Cursor compositing is `#if 0`'d — remove dead code~~ **[FIXED]** Removed dead cursor code; QScreenCapture captures cursor natively. |
+| 22 | `src/platform/sckbackend.mm` | ~~Dead cursor code~~ **[FIXED]** ScreenCaptureKit uses `config.showsCursor = YES` to enable cursor natively. |
 | 23 | `src/encoding/gifencoder.cpp` | `qMax(1, 100 / outputFps)` GIF delay loses precision above 50 fps — use floating-point intermediate |
 | 24 | `src/capture/framestore.hpp` | No frame buffer size limit; 30 s @ 30 fps ≈ 1.2 GB RAM. Document a hard cap or add a configurable one. |
 | 25 | `src/bufferedstrategy.cpp` | No timeout if encoder hangs; UI shows "Processing…" forever |

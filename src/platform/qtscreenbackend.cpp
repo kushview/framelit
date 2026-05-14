@@ -1,9 +1,6 @@
 #include "qtscreenbackend.hpp"
 
-#include <QGuiApplication>
-#include <QCursor>
 #include <QMediaCaptureSession>
-#include <QPainter>
 #include <QScreen>
 #include <QScreenCapture>
 #include <QVideoFrame>
@@ -85,25 +82,8 @@ void QtScreenCaptureBackend::onVideoFrameChanged(const QVideoFrame& videoFrame)
     if (img.isNull())
         return;
 
-    // Composite the system cursor onto the frame.
-#if 0
-    if (m_screen) {
-        const QPoint globalPos = QCursor::pos(m_screen);
-        const QRect screenRect = m_screen->geometry();
-        const qreal scaleX = img.width()  > 0 ? (qreal)img.width()  / screenRect.width()  : 1.0;
-        const qreal scaleY = img.height() > 0 ? (qreal)img.height() / screenRect.height() : 1.0;
-        const QPoint framePos(
-            qRound((globalPos.x() - screenRect.x()) * scaleX),
-            qRound((globalPos.y() - screenRect.y()) * scaleY)
-        );
-        const QPixmap cursorPix = QGuiApplication::primaryScreen()
-            ? QCursor(Qt::ArrowCursor).pixmap() : QPixmap();
-        if (!cursorPix.isNull() && img.rect().contains(framePos)) {
-            QPainter p(&img);
-            p.drawPixmap(framePos, cursorPix);
-        }
-    }
-#endif
+    // On Windows, QScreenCapture naturally captures the system cursor
+    // as rendered by the OS compositor. No manual compositing is needed.
 
     emit frameArrived(img);
 }
