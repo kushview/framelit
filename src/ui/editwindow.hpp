@@ -30,6 +30,7 @@ class EditWindow : public QWidget {
 
 public:
     explicit EditWindow(Actions* actions, QWidget* parent = nullptr);
+    ~EditWindow() override;
     void setAudioOutputDevice(const QString& deviceId);
 
     void setOutputDir(const QString& dir);

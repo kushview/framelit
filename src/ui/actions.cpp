@@ -72,14 +72,14 @@ void Actions::sync(AppState state,
     const bool idle   = (state == AppState::Idle || state == AppState::Preview);
     const bool active = (state == AppState::Recording || state == AppState::Paused);
     const bool paused = (state == AppState::Paused);
-    const bool inPreview = (state == AppState::Preview);
 
     record->setEnabled(idle);
     pauseResume->setEnabled(active);
     pauseResume->setText(paused ? QStringLiteral("Resume") : QStringLiteral("Pause"));
     stop->setEnabled(active);
     snapAspect->setEnabled(idle);
-    openPreview->setEnabled(idle && (hasPreviewMedia || inPreview));
+    Q_UNUSED(hasPreviewMedia);
+    openPreview->setEnabled(idle);
     openOutputDir->setEnabled(!settings.outputDir.isEmpty() && QDir(settings.outputDir).exists());
 
     {

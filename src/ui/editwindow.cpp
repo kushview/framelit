@@ -36,7 +36,8 @@ void EditWindow::setAudioOutputDevice(const QString& deviceId)
         return;
 
     if (m_audioOutput) {
-        m_audioOutput->deleteLater();
+        m_player->setAudioOutput(nullptr);
+        delete m_audioOutput;
         m_audioOutput = nullptr;
     }
 
@@ -80,11 +81,21 @@ EditWindow::EditWindow(Actions* actions, QWidget* parent)
     syncTransportState();
 }
 
+EditWindow::~EditWindow()
+{
+    // Detach before QObject child teardown to avoid QtMultimedia dangling callbacks.
+    if (m_player)
+        m_player->setAudioOutput(nullptr);
+    if (m_audioOutput) {
+        delete m_audioOutput;
+        m_audioOutput = nullptr;
+    }
+}
+
 void EditWindow::setOutputDir(const QString& dir)
 {
-    if (m_outputDir == dir)
-        return;
-    m_outputDir = dir;
+    if (m_outputDir != dir)
+        m_outputDir = dir;
     refreshFileList();
 }
 
@@ -163,9 +174,10 @@ void EditWindow::buildUi(Actions* actions)
     m_previewView = new QGraphicsView(center);
     m_previewView->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     m_previewView->setFrameShape(QFrame::NoFrame);
-    m_previewView->setStyleSheet(QStringLiteral("background: #0f172a;"));
+    m_previewView->setStyleSheet(QStringLiteral("background: #000000;"));
 
     m_scene = new QGraphicsScene(m_previewView);
+    m_scene->setBackgroundBrush(Qt::black);
     m_previewView->setScene(m_scene);
 
     m_mediaLayer = m_scene->createItemGroup({});
@@ -347,6 +359,7 @@ void EditWindow::refreshFileList()
     if (!m_fileList)
         return;
 
+    const QString preferredPath = m_currentFile;
     m_fileList->clear();
 
     if (m_outputDir.isEmpty())
@@ -360,14 +373,25 @@ void EditWindow::refreshFileList()
         QDir::Files | QDir::Readable,
         QDir::Time);
 
+    int preferredIndex = -1;
     for (const QFileInfo& fi : files) {
         if (!isSupportedPreviewSuffix(fi.suffix()))
             continue;
         auto* item = new QListWidgetItem(fi.fileName(), m_fileList);
-        item->setData(Qt::UserRole, fi.absoluteFilePath());
+        const QString absolutePath = fi.absoluteFilePath();
+        item->setData(Qt::UserRole, absolutePath);
+        if (absolutePath == preferredPath)
+            preferredIndex = m_fileList->count() - 1;
     }
 
-    if (m_fileList->count() > 0)
+    if (m_fileList->count() == 0) {
+        unloadMedia();
+        return;
+    }
+
+    if (preferredIndex >= 0)
+        m_fileList->setCurrentRow(preferredIndex);
+    else
         m_fileList->setCurrentRow(0);
 }
 
@@ -505,6 +529,7 @@ void EditWindow::unloadMedia()
     m_timeline->setDurationMs(0);
     m_timeline->setInOutMs(0, 0);
     m_timeline->setPositionMs(0);
+    m_currentFile.clear();
     m_isGif = false;
     updateTimeLabel(0, 0);
 }
