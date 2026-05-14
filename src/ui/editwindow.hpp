@@ -10,23 +10,27 @@ class QGraphicsView;
 class QLabel;
 class QMediaPlayer;
 class QPushButton;
-class QSlider;
 class QVideoSink;
 class QMovie;
 class QGraphicsItemGroup;
+class QAudioOutput;
+class QToolBar;
 
 namespace sc {
+
+class Actions;
+class PreviewStore;
+class TimelineRangeWidget;
 
 // Preview/edit surface for recorded media.
 // Uses a composited QGraphicsScene with dedicated media + annotation layers,
 // so annotations can be applied consistently across GIF/video in later phases.
 class EditWindow : public QWidget {
-public:
-    void setAudioOutputDevice(const QString& deviceId);
     Q_OBJECT
 
 public:
-    explicit EditWindow(QWidget* parent = nullptr);
+    explicit EditWindow(Actions* actions, QWidget* parent = nullptr);
+    void setAudioOutputDevice(const QString& deviceId);
 
     void setOutputDir(const QString& dir);
     void selectFile(const QString& path);
@@ -42,8 +46,11 @@ protected:
     void closeEvent(QCloseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
 
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+
 private:
-    void buildUi();
+    void buildUi(Actions* actions);
     void refreshFileList();
     void loadMediaFile(const QString& path);
     void unloadMedia();
@@ -64,16 +71,22 @@ private:
 
     QPushButton* m_playPauseButton = nullptr;
     QPushButton* m_stopButton = nullptr;
-    QSlider* m_seekSlider = nullptr;
+    TimelineRangeWidget* m_timeline = nullptr;
     QLabel* m_timeLabel = nullptr;
 
     QMediaPlayer* m_player = nullptr;
+    QAudioOutput* m_audioOutput = nullptr;
     QVideoSink* m_videoSink = nullptr;
     QMovie* m_movie = nullptr;
+    PreviewStore* m_store = nullptr;
 
     qint64 m_durationMs = 0;
+    qint64 m_inPointMs = 0;
+    qint64 m_outPointMs = 0;
+    qint64 m_restorePreviewPositionMs = 0;
+    bool m_previewScrubbing = false;
+    bool m_resumeAfterPreviewScrub = false;
     bool m_isGif = false;
-    bool m_isUserSeeking = false;
 };
 
 } // namespace sc

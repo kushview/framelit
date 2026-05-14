@@ -1,4 +1,5 @@
 #include "videoencoder.hpp"
+#include "audioengine.hpp"
 
 #include <QDateTime>
 #include <QDebug>
@@ -24,14 +25,13 @@ VideoEncoder::VideoEncoder(const RecordingSettings& settings, QObject* parent)
     if (m_settings.captureAudio) {
         // Resolve device by ID if one was selected; fall back to system default.
         if (!m_settings.audioDeviceId.isEmpty()) {
-            const auto devices = QMediaDevices::audioInputs();
-            for (const QAudioDevice& dev : devices) {
-                if (dev.id() == m_settings.audioDeviceId.toUtf8()) {
-                    m_audioInput.setDevice(dev);
-                    qDebug("[VideoEncoder] audio device: %s",
-                           qPrintable(dev.description()));
-                    break;
-                }
+            const QAudioDevice dev = audio::resolveInputDevice(m_settings.audioDeviceId);
+            if (!dev.isNull()) {
+                m_audioInput.setDevice(dev);
+                qDebug("[VideoEncoder] audio device: %s",
+                       qPrintable(dev.description()));
+            } else {
+                qDebug("[VideoEncoder] audio device not found, using system default");
             }
         } else {
             qDebug("[VideoEncoder] audio device: system default");

@@ -106,9 +106,6 @@ void AppController::start()
     m_centerHandle  = new CenterHandle();
     m_closeButton   = new CloseButton();
     m_controlBar    = new ControlBar(m_captureWindow);
-    m_editWindow    = new EditWindow();
-    m_editWindow->setOutputDir(m_settings.outputDir);
-    connect(m_editWindow, &EditWindow::closed, this, &AppController::onPreviewClosed);
 
     m_actions = new Actions(this);
     connect(m_actions, &Actions::recordRequested,             this, &AppController::onStartRequested);
@@ -124,8 +121,14 @@ void AppController::start()
     connect(m_actions, &Actions::followMouseChangeRequested,  this, &AppController::onFollowMouseChangeRequested);
     connect(m_actions, &Actions::snapAspectRequested,         this, &AppController::onSnapAspectRequested);
     connect(m_actions, &Actions::openPreviewRequested,        this, &AppController::onOpenPreviewRequested);
+    connect(m_actions, &Actions::openOutputDirRequested,      this, &AppController::onOpenOutputDirRequested);
     connect(m_actions, &Actions::preferencesRequested,        this, &AppController::onPreferencesRequested);
     connect(m_actions, &Actions::quitRequested,               []() { QApplication::quit(); });
+
+    m_editWindow    = new EditWindow(m_actions);
+    m_editWindow->setOutputDir(m_settings.outputDir);
+    m_editWindow->setAudioOutputDevice(m_settings.audioOutputDeviceId);
+    connect(m_editWindow, &EditWindow::closed, this, &AppController::onPreviewClosed);
 
     m_mainMenu = new MainMenu(m_actions, this);
 
@@ -561,6 +564,18 @@ void AppController::onSnapAspectRequested()
 void AppController::onPreferencesRequested()
 {
     openPreferencesDialog();
+}
+
+void AppController::onOpenOutputDirRequested()
+{
+    if (m_settings.outputDir.isEmpty())
+        return;
+
+    const QDir dir(m_settings.outputDir);
+    if (!dir.exists())
+        return;
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
 }
 
 void AppController::openPreferencesDialog()

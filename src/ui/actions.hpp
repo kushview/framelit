@@ -55,6 +55,7 @@ public:
     // One-shot actions
     QAction* snapAspect  = nullptr;   // snap region to nearest 16:9 / 9:16
     QAction* openPreview = nullptr;   // open preview/edit window
+    QAction* openOutputDir = nullptr; // open the configured output directory
     QAction* preferences = nullptr;   // open the Preferences dialog
     QAction* showHide    = nullptr;   // toggle capture UI window visibility
     QAction* quit        = nullptr;   // quit the application
@@ -70,6 +71,7 @@ signals:
     void followMouseChangeRequested(bool on);
     void snapAspectRequested();
     void openPreviewRequested();
+    void openOutputDirRequested();
     void preferencesRequested();
     void quitRequested();
 

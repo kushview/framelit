@@ -3,6 +3,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QDir>
 #include <QSignalBlocker>
 
 namespace sc {
@@ -36,6 +37,7 @@ Actions::Actions(QObject* parent)
     // One-shot actions
     snapAspect  = new QAction(QStringLiteral("Snap Aspect (16:9 / 9:16)"), this);
     openPreview = new QAction(QStringLiteral("Open Preview"), this);
+    openOutputDir = new QAction(QStringLiteral("Open Output Folder"), this);
     preferences = new QAction(QStringLiteral("Preferences\u2026"), this);
     showHide    = new QAction(QString(), this);
     quit        = new QAction(QStringLiteral("Quit"), this);
@@ -47,6 +49,7 @@ Actions::Actions(QObject* parent)
     connect(showHide,    &QAction::triggered, this, &Actions::toggleUiRequested);
     connect(snapAspect,  &QAction::triggered, this, &Actions::snapAspectRequested);
     connect(openPreview, &QAction::triggered, this, &Actions::openPreviewRequested);
+    connect(openOutputDir, &QAction::triggered, this, &Actions::openOutputDirRequested);
     connect(preferences, &QAction::triggered, this, &Actions::preferencesRequested);
     connect(quit,        &QAction::triggered, this, &Actions::quitRequested);
 
@@ -77,6 +80,7 @@ void Actions::sync(AppState state,
     stop->setEnabled(active);
     snapAspect->setEnabled(idle);
     openPreview->setEnabled(idle && (hasPreviewMedia || inPreview));
+    openOutputDir->setEnabled(!settings.outputDir.isEmpty() && QDir(settings.outputDir).exists());
 
     {
         QSignalBlocker bgif(*formatGif), bmp4(*formatMp4);

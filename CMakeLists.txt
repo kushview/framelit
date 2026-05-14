@@ -35,6 +35,8 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Multimedia MultimediaW
 set(SOURCES
     src/main.cpp
     src/appcontroller.cpp
+    src/audioengine.cpp
+    src/previewstore.cpp
     src/recorderworker.cpp
     src/recordingstrategy.hpp
     src/bufferedstrategy.cpp
@@ -52,6 +54,7 @@ set(SOURCES
     src/ui/systemtray.cpp
     src/ui/actions.cpp
     src/ui/preferencesdialog.cpp
+    src/ui/timelinerange.cpp
     src/platform/screencapturebackend.hpp
 )
 
@@ -77,6 +80,8 @@ list(APPEND SOURCES src/platform/windowhelpers.cpp)
 
 set(HEADERS
     src/appcontroller.hpp
+    src/audioengine.hpp
+    src/previewstore.hpp
     src/recorderworker.hpp
     src/capture/screencaptureworker.hpp
     src/capture/framestore.hpp
@@ -88,6 +93,7 @@ set(HEADERS
     src/ui/controlbar.hpp
     src/ui/editwindow.hpp
     src/ui/mainmenu.hpp
+    src/ui/timelinerange.hpp
 )
 
 if(APPLE)

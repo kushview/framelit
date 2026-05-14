@@ -1,3 +1,4 @@
+#include "audioengine.hpp"
 #include <QAudioDevice>
 #include <QAudioOutput>
 #include <QMediaDevices>
@@ -107,8 +108,10 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
     QString currentInputId = settings.audioDeviceId;
     int inputIdx = 0, inputSel = 0;
     for (const QAudioDevice& dev : inputDevices) {
-        audioInputCombo->addItem(dev.description(), dev.id());
-        if (!currentInputId.isEmpty() && dev.id() == currentInputId)
+        const QString persisted = audio::encodeDeviceId(dev.id());
+        audioInputCombo->addItem(dev.description(), persisted);
+        if (!currentInputId.isEmpty() &&
+            (currentInputId == persisted || dev.id() == currentInputId.toUtf8()))
             inputSel = inputIdx;
         ++inputIdx;
     }
@@ -121,8 +124,10 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
     QString currentOutputId = settings.audioOutputDeviceId;
     int outputIdx = 0, outputSel = 0;
     for (const QAudioDevice& dev : outputDevices) {
-        audioOutputCombo->addItem(dev.description(), dev.id());
-        if (!currentOutputId.isEmpty() && dev.id() == currentOutputId)
+        const QString persisted = audio::encodeDeviceId(dev.id());
+        audioOutputCombo->addItem(dev.description(), persisted);
+        if (!currentOutputId.isEmpty() &&
+            (currentOutputId == persisted || dev.id() == currentOutputId.toUtf8()))
             outputSel = outputIdx;
         ++outputIdx;
     }

@@ -183,6 +183,7 @@ public slots:
   void onFollowMouseTick();
   void onSnapAspectRequested();
   void onPreferencesRequested();
+  void onOpenOutputDirRequested();
   void onGrowRequested();
   void onShrinkRequested();
   void onScreenshotRequested();
