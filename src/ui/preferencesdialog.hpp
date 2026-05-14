@@ -21,6 +21,8 @@ signals:
     void growStepChangeRequested(int step);
     void letterboxChangeRequested(bool letterbox);
     void demoModeChangeRequested(bool on);
+    void audioInputDeviceChangeRequested(QString deviceId);
+    void audioOutputDeviceChangeRequested(QString deviceId);
 };
 
 } // namespace sc

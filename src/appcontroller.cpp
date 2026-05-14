@@ -10,6 +10,8 @@
 #include "ui/centerhandle.hpp"
 #include "ui/closebutton.hpp"
 #include "ui/controlbar.hpp"
+#include "ui/editwindow.hpp"
+#include "ui/mainmenu.hpp"
 #include "ui/preferencesdialog.hpp"
 
 #include <QCursor>
@@ -24,6 +26,7 @@
 #include "ui/actions.hpp"
 #include <QApplication>
 #include <QDesktopServices>
+#include <QDir>
 #include <QMessageBox>
 #include <QScreen>
 #include <QThread>
@@ -31,6 +34,32 @@
 #include <qwindowdefs.h>
 
 namespace sc {
+
+namespace {
+
+bool isIdleLikeState(AppState state)
+{
+    return state == AppState::Idle || state == AppState::Preview;
+}
+
+bool hasPreviewMediaInDir(const QString& outputDir)
+{
+    if (outputDir.isEmpty())
+        return false;
+
+    const QDir dir(outputDir);
+    if (!dir.exists())
+        return false;
+
+    const QStringList filters = {
+        QStringLiteral("*.gif"),
+        QStringLiteral("*.mp4"),
+        QStringLiteral("*.webm")
+    };
+    return !dir.entryList(filters, QDir::Files | QDir::Readable, QDir::Time).isEmpty();
+}
+
+} // namespace
 
 AppController::AppController(QObject* parent)
     : QObject(parent)
@@ -53,6 +82,8 @@ AppController::AppController(QObject* parent)
 AppController::~AppController()
 {
     teardownWorker();
+    delete m_editWindow;
+    m_editWindow = nullptr;
     saveSettings();
 }
 
@@ -75,6 +106,28 @@ void AppController::start()
     m_centerHandle  = new CenterHandle();
     m_closeButton   = new CloseButton();
     m_controlBar    = new ControlBar(m_captureWindow);
+    m_editWindow    = new EditWindow();
+    m_editWindow->setOutputDir(m_settings.outputDir);
+    connect(m_editWindow, &EditWindow::closed, this, &AppController::onPreviewClosed);
+
+    m_actions = new Actions(this);
+    connect(m_actions, &Actions::recordRequested,             this, &AppController::onStartRequested);
+    connect(m_actions, &Actions::pauseResumeRequested, this, [this]() {
+        if (m_state == AppState::Recording) onPauseRequested();
+        else if (m_state == AppState::Paused) onResumeRequested();
+    });
+    connect(m_actions, &Actions::stopRequested,               this, &AppController::onStopRequested);
+    connect(m_actions, &Actions::toggleUiRequested,           this, &AppController::toggleUiVisible);
+    connect(m_actions, &Actions::formatChangeRequested,       this, &AppController::onFormatChangeRequested);
+    connect(m_actions, &Actions::audioChangeRequested,        this, &AppController::onAudioChangeRequested);
+    connect(m_actions, &Actions::hiDpiChangeRequested,        this, &AppController::onHiDpiChangeRequested);
+    connect(m_actions, &Actions::followMouseChangeRequested,  this, &AppController::onFollowMouseChangeRequested);
+    connect(m_actions, &Actions::snapAspectRequested,         this, &AppController::onSnapAspectRequested);
+    connect(m_actions, &Actions::openPreviewRequested,        this, &AppController::onOpenPreviewRequested);
+    connect(m_actions, &Actions::preferencesRequested,        this, &AppController::onPreferencesRequested);
+    connect(m_actions, &Actions::quitRequested,               []() { QApplication::quit(); });
+
+    m_mainMenu = new MainMenu(m_actions, this);
 
     // Wire control bar buttons → controller slots
     connect(m_controlBar, &ControlBar::startRequested,        this, &AppController::onStartRequested);
@@ -164,26 +217,10 @@ void AppController::start()
         QTimer::singleShot(0, this, [this]() { applyDemoMode(); });
 
     if (SystemTray::isAvailable()) {
-        m_actions = new Actions(this);
-        connect(m_actions, &Actions::recordRequested,          this, &AppController::onStartRequested);
-        connect(m_actions, &Actions::pauseResumeRequested, this, [this]() {
-            if (m_state == AppState::Recording) onPauseRequested();
-            else if (m_state == AppState::Paused) onResumeRequested();
-        });
-        connect(m_actions, &Actions::stopRequested,            this, &AppController::onStopRequested);
-        connect(m_actions, &Actions::toggleUiRequested,        this, &AppController::toggleUiVisible);
-        connect(m_actions, &Actions::formatChangeRequested,    this, &AppController::onFormatChangeRequested);
-        connect(m_actions, &Actions::audioChangeRequested,     this, &AppController::onAudioChangeRequested);
-        connect(m_actions, &Actions::hiDpiChangeRequested,     this, &AppController::onHiDpiChangeRequested);
-        connect(m_actions, &Actions::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
-        connect(m_actions, &Actions::snapAspectRequested,      this, &AppController::onSnapAspectRequested);
-        connect(m_actions, &Actions::preferencesRequested,     this, &AppController::onPreferencesRequested);
-        connect(m_actions, &Actions::quitRequested,            []() { QApplication::quit(); });
-
         m_tray = new SystemTray(m_actions, this);
         m_tray->show();
-        syncActions();
     }
+    syncActions();
 
     const QRect targetRect = m_region.rect;
     emit stateChanged(m_state);
@@ -203,7 +240,9 @@ void AppController::syncActions()
 {
     if (!m_actions || !m_captureWindow || !m_controlBar)
         return;
-    m_actions->sync(m_state, m_settings, m_followMouse,
+    m_actions->sync(m_state, m_settings,
+                    hasPreviewMediaInDir(m_settings.outputDir),
+                    m_followMouse,
                     m_captureWindow->isVisible() && m_controlBar->isVisible());
 }
 
@@ -247,8 +286,11 @@ void AppController::toggleUiVisible()
 
 void AppController::onStartRequested()
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
+
+    if (m_editWindow && m_editWindow->isVisible())
+        m_editWindow->hide();
 
     // Create strategy before the worker so it's ready to receive frames.
     if (m_settings.format == OutputFormat::Gif)
@@ -381,6 +423,13 @@ void AppController::onEncodingFinished(const QString& filePath)
         m_strategy->deleteLater();
         m_strategy = nullptr;
     }
+    m_lastOutputPath = filePath;
+    if (m_editWindow && m_editWindow->isVisible()) {
+        m_editWindow->setOutputDir(m_settings.outputDir);
+        m_editWindow->selectFile(filePath);
+        setState(AppState::Preview);
+        return;
+    }
     setState(AppState::Idle);
 }
 
@@ -402,7 +451,7 @@ void AppController::onEncodingFailed(const QString& reason)
 
 void AppController::onFormatChangeRequested(OutputFormat format)
 {
-    if (m_state != AppState::Idle) { syncActions(); return; }
+    if (!isIdleLikeState(m_state)) { syncActions(); return; }
     m_settings.format = format;
     saveSettings();
     syncActions();
@@ -410,7 +459,7 @@ void AppController::onFormatChangeRequested(OutputFormat format)
 
 void AppController::onAudioChangeRequested(bool captureAudio)
 {
-    if (m_state != AppState::Idle) { syncActions(); return; }
+    if (!isIdleLikeState(m_state)) { syncActions(); return; }
     m_settings.captureAudio = captureAudio;
     saveSettings();
     syncActions();
@@ -418,7 +467,7 @@ void AppController::onAudioChangeRequested(bool captureAudio)
 
 void AppController::onHiDpiChangeRequested(bool hiDpi)
 {
-    if (m_state != AppState::Idle) { syncActions(); return; }
+    if (!isIdleLikeState(m_state)) { syncActions(); return; }
     m_settings.hiDpi = hiDpi;
     saveSettings();
     syncActions();
@@ -446,7 +495,7 @@ void AppController::applyDemoMode()
 
 void AppController::onLetterboxChangeRequested(bool letterbox)
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
     m_settings.letterbox = letterbox;
     saveSettings();
@@ -454,23 +503,35 @@ void AppController::onLetterboxChangeRequested(bool letterbox)
 
 void AppController::onAudioDeviceChangeRequested(const QString& deviceId)
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
     m_settings.audioDeviceId = deviceId;
     saveSettings();
 }
 
+void AppController::onAudioOutputDeviceChangeRequested(const QString& deviceId)
+{
+    if (!isIdleLikeState(m_state))
+        return;
+    m_settings.audioOutputDeviceId = deviceId;
+    if (m_editWindow)
+        m_editWindow->setAudioOutputDevice(deviceId);
+    saveSettings();
+}
+
 void AppController::onOutputDirChangeRequested(const QString& dir)
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
     m_settings.outputDir = dir;
+    if (m_editWindow)
+        m_editWindow->setOutputDir(dir);
     saveSettings();
 }
 
 void AppController::onOutputSizeChangeRequested(QSize size)
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
     m_settings.outputSize = size;
     saveSettings();
@@ -478,7 +539,7 @@ void AppController::onOutputSizeChangeRequested(QSize size)
 
 void AppController::onGrowStepChangeRequested(int step)
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
     m_settings.growStep = qBound(1, step, 200);
     saveSettings();
@@ -486,7 +547,7 @@ void AppController::onGrowStepChangeRequested(int step)
 
 void AppController::onSnapAspectRequested()
 {
-    if (m_state != AppState::Idle)
+    if (!isIdleLikeState(m_state))
         return;
     QRect r = m_region.rect;
     // Landscape → 16:9; portrait/square → 9:16.
@@ -511,6 +572,9 @@ void AppController::openPreferencesDialog()
     connect(dlg, &PreferencesDialog::growStepChangeRequested,   this, &AppController::onGrowStepChangeRequested);
     connect(dlg, &PreferencesDialog::letterboxChangeRequested,  this, &AppController::onLetterboxChangeRequested);
     connect(dlg, &PreferencesDialog::demoModeChangeRequested,   this, &AppController::onDemoModeChangeRequested);
+
+    connect(dlg, &PreferencesDialog::audioInputDeviceChangeRequested, this, &AppController::onAudioDeviceChangeRequested);
+    connect(dlg, &PreferencesDialog::audioOutputDeviceChangeRequested, this, &AppController::onAudioOutputDeviceChangeRequested);
 
     // Hide capture UI while the dialog is open; restore only what was visible.
     const bool captureWasVisible = m_captureWindow && m_captureWindow->isVisible();
@@ -638,10 +702,32 @@ void AppController::onRecordToggleRequested()
 {
     if (m_state == AppState::Recording || m_state == AppState::Paused)
         onStopRequested();
-    else if (m_state == AppState::Idle || m_state == AppState::Positioning) {
+    else if (m_state == AppState::Idle || m_state == AppState::Positioning || m_state == AppState::Preview) {
         setUiVisible(true);
         onStartRequested();
     }
+}
+
+void AppController::onPreviewClosed()
+{
+    if (m_state == AppState::Preview)
+        setState(AppState::Idle);
+}
+
+void AppController::onOpenPreviewRequested()
+{
+    if (!isIdleLikeState(m_state) || !m_editWindow)
+        return;
+
+    m_editWindow->setOutputDir(m_settings.outputDir);
+    m_editWindow->show();
+    m_editWindow->raise();
+    m_editWindow->activateWindow();
+
+    if (!m_lastOutputPath.isEmpty())
+        m_editWindow->selectFile(m_lastOutputPath);
+
+    setState(AppState::Preview);
 }
 
 void AppController::onFollowMouseTick()
@@ -722,7 +808,6 @@ void AppController::setState(AppState s)
 
 void AppController::applySettingsToUI()
 {
-    m_controlBar->setAudioDeviceId(m_settings.audioDeviceId);
     m_controlBar->setOutputDir(m_settings.outputDir);
     m_controlBar->setOutputSize(m_settings.outputSize);
     m_controlBar->setGrowStep(m_settings.growStep);

@@ -1,3 +1,6 @@
+#include <QAudioDevice>
+#include <QAudioOutput>
+#include <QMediaDevices>
 #include "preferencesdialog.hpp"
 
 #include <QCheckBox>
@@ -98,15 +101,46 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
 
     vlay->addLayout(form);
 
+    // Audio input device selector
+    auto* audioInputCombo = new QComboBox(this);
+    const auto inputDevices = QMediaDevices::audioInputs();
+    QString currentInputId = settings.audioDeviceId;
+    int inputIdx = 0, inputSel = 0;
+    for (const QAudioDevice& dev : inputDevices) {
+        audioInputCombo->addItem(dev.description(), dev.id());
+        if (!currentInputId.isEmpty() && dev.id() == currentInputId)
+            inputSel = inputIdx;
+        ++inputIdx;
+    }
+    audioInputCombo->setCurrentIndex(inputSel);
+    form->addRow("Audio input device:", audioInputCombo);
+
+    // Audio output device selector
+    auto* audioOutputCombo = new QComboBox(this);
+    const auto outputDevices = QMediaDevices::audioOutputs();
+    QString currentOutputId = settings.audioOutputDeviceId;
+    int outputIdx = 0, outputSel = 0;
+    for (const QAudioDevice& dev : outputDevices) {
+        audioOutputCombo->addItem(dev.description(), dev.id());
+        if (!currentOutputId.isEmpty() && dev.id() == currentOutputId)
+            outputSel = outputIdx;
+        ++outputIdx;
+    }
+    audioOutputCombo->setCurrentIndex(outputSel);
+    form->addRow("Audio output device:", audioOutputCombo);
+
     auto* buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     connect(buttons, &QDialogButtonBox::accepted, this,
             [this, dirEdit, sizeCombo, growStepSpin, letterboxCheck, demoCheck,
+             audioInputCombo, audioOutputCombo,
              savedDir    = settings.outputDir,
              savedSize   = settings.outputSize,
              savedStep   = settings.growStep,
              savedLb     = settings.letterbox,
-             savedDemo   = settings.demoMode]()
+             savedDemo   = settings.demoMode,
+             savedInput  = settings.audioDeviceId,
+             savedOutput = settings.audioOutputDeviceId]()
     {
         const QString dir = dirEdit->text();
         if (dir != savedDir)
@@ -127,6 +161,14 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
         const bool demo = demoCheck->isChecked();
         if (demo != savedDemo)
             emit demoModeChangeRequested(demo);
+
+        const QString inputId = audioInputCombo->currentData().toString();
+        if (inputId != savedInput)
+            emit audioInputDeviceChangeRequested(inputId);
+
+        const QString outputId = audioOutputCombo->currentData().toString();
+        if (outputId != savedOutput)
+            emit audioOutputDeviceChangeRequested(outputId);
 
         accept();
     });

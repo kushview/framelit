@@ -35,6 +35,7 @@ Actions::Actions(QObject* parent)
 
     // One-shot actions
     snapAspect  = new QAction(QStringLiteral("Snap Aspect (16:9 / 9:16)"), this);
+    openPreview = new QAction(QStringLiteral("Open Preview"), this);
     preferences = new QAction(QStringLiteral("Preferences\u2026"), this);
     showHide    = new QAction(QString(), this);
     quit        = new QAction(QStringLiteral("Quit"), this);
@@ -45,6 +46,7 @@ Actions::Actions(QObject* parent)
     connect(stop,        &QAction::triggered, this, &Actions::stopRequested);
     connect(showHide,    &QAction::triggered, this, &Actions::toggleUiRequested);
     connect(snapAspect,  &QAction::triggered, this, &Actions::snapAspectRequested);
+    connect(openPreview, &QAction::triggered, this, &Actions::openPreviewRequested);
     connect(preferences, &QAction::triggered, this, &Actions::preferencesRequested);
     connect(quit,        &QAction::triggered, this, &Actions::quitRequested);
 
@@ -59,19 +61,22 @@ Actions::Actions(QObject* parent)
 }
 
 void Actions::sync(AppState state,
-                      const RecordingSettings& settings,
-                      bool followEnabled,
-                      bool uiVisible)
+                   const RecordingSettings& settings,
+                   bool hasPreviewMedia,
+                   bool followEnabled,
+                   bool uiVisible)
 {
-    const bool idle   = (state == AppState::Idle);
+    const bool idle   = (state == AppState::Idle || state == AppState::Preview);
     const bool active = (state == AppState::Recording || state == AppState::Paused);
     const bool paused = (state == AppState::Paused);
+    const bool inPreview = (state == AppState::Preview);
 
     record->setEnabled(idle);
     pauseResume->setEnabled(active);
     pauseResume->setText(paused ? QStringLiteral("Resume") : QStringLiteral("Pause"));
     stop->setEnabled(active);
     snapAspect->setEnabled(idle);
+    openPreview->setEnabled(idle && (hasPreviewMedia || inPreview));
 
     {
         QSignalBlocker bgif(*formatGif), bmp4(*formatMp4);

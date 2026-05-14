@@ -63,6 +63,7 @@ void SystemTray::buildMenu(Actions* actions)
     m_menu->addSeparator();
 
     // App actions
+    m_menu->addAction(actions->openPreview);
     m_menu->addAction(actions->preferences);
     m_menu->addAction(actions->showHide);
     m_menu->addSeparator();

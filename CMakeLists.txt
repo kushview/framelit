@@ -47,6 +47,8 @@ set(SOURCES
     src/ui/centerhandle.cpp
     src/ui/closebutton.cpp
     src/ui/controlbar.cpp
+    src/ui/editwindow.cpp
+    src/ui/mainmenu.cpp
     src/ui/systemtray.cpp
     src/ui/actions.cpp
     src/ui/preferencesdialog.cpp
@@ -84,6 +86,8 @@ set(HEADERS
     src/ui/centerhandle.hpp
     src/ui/closebutton.hpp
     src/ui/controlbar.hpp
+    src/ui/editwindow.hpp
+    src/ui/mainmenu.hpp
 )
 
 if(APPLE)

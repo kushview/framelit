@@ -91,38 +91,10 @@ void ControlBar::buildUi()
         "QPushButton:hover { border-color: #64748b; }");
     connect(m_audioButton, &QPushButton::toggled, this, [this](bool on) {
         m_captureAudio = on;
-        m_audioDeviceCombo->setVisible(on);
         emit audioChangeRequested(on);
     });
     layout->addWidget(m_audioButton);
 
-    m_audioDeviceCombo = new QComboBox(this);
-    m_audioDeviceCombo->setVisible(false);
-    m_audioDeviceCombo->setToolTip("Audio input device");
-    m_audioDeviceCombo->setStyleSheet(
-        "QComboBox { color: #e2e8f0; background: #1e2029; border: 1px solid #334155;"
-        " border-radius: 3px; padding: 1px 6px; font-size: 11px; }"
-        "QComboBox::drop-down { border: none; }"
-        "QComboBox QAbstractItemView { background: #1e2029; color: #e2e8f0;"
-        " selection-background-color: #334155; }");
-    // Populate with available input devices; first entry = system default.
-    const auto devices = QMediaDevices::audioInputs();
-    if (devices.isEmpty()) {
-        m_audioDeviceCombo->addItem("(no input devices)", QString{});
-    } else {
-        const QAudioDevice defaultDev = QMediaDevices::defaultAudioInput();
-        m_audioDeviceCombo->addItem(
-            "Default (" + defaultDev.description() + ")",
-            defaultDev.id());
-        for (const QAudioDevice& dev : devices) {
-            if (dev.id() != defaultDev.id())
-                m_audioDeviceCombo->addItem(dev.description(), dev.id());
-        }
-    }
-    connect(m_audioDeviceCombo, &QComboBox::currentIndexChanged, this, [this](int idx) {
-        emit audioDeviceChangeRequested(m_audioDeviceCombo->itemData(idx).toString());
-    });
-    layout->addWidget(m_audioDeviceCombo);
 
     m_recordButton = new QPushButton("Record", this);
     m_recordButton->setObjectName("recordBtn");
@@ -216,8 +188,6 @@ void ControlBar::setCaptureAudio(bool on)
     m_captureAudio = on;
     if (m_audioButton)
         m_audioButton->setChecked(on);
-    if (m_audioDeviceCombo)
-        m_audioDeviceCombo->setVisible(on && m_format != OutputFormat::Gif);
 }
 
 void ControlBar::setFollowMouse(bool enabled)
@@ -258,26 +228,8 @@ void ControlBar::setFormat(sc::OutputFormat format)
     const bool isVideo = (format != OutputFormat::Gif);
     m_formatButton->setText(isVideo ? "MP4" : "GIF");
     m_audioButton->setVisible(isVideo);
-    m_audioDeviceCombo->setVisible(isVideo && m_captureAudio);
 }
 
-void ControlBar::setAudioDeviceId(const QString& id)
-{
-    if (!m_audioDeviceCombo)
-        return;
-    if (id.isEmpty()) {
-        m_audioDeviceCombo->setCurrentIndex(0);
-        return;
-    }
-    for (int i = 0; i < m_audioDeviceCombo->count(); ++i) {
-        if (m_audioDeviceCombo->itemData(i).toString() == id) {
-            m_audioDeviceCombo->setCurrentIndex(i);
-            return;
-        }
-    }
-    // ID not found (device removed) — fall back to system default.
-    m_audioDeviceCombo->setCurrentIndex(0);
-}
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -334,12 +286,12 @@ void ControlBar::updateUiForState(AppState state)
 {
     switch (state) {
     case AppState::Idle:
+    case AppState::Preview:
         m_recordButton->setVisible(true);
         m_pauseButton->setVisible(false);
         m_stopButton->setVisible(false);
         m_formatButton->setEnabled(true);
         m_audioButton->setEnabled(true);
-        m_audioDeviceCombo->setEnabled(true);
         m_snapButton->setEnabled(true);
         break;
 
@@ -350,7 +302,6 @@ void ControlBar::updateUiForState(AppState state)
         m_stopButton->setVisible(true);
         m_formatButton->setEnabled(false);
         m_audioButton->setEnabled(false);
-        m_audioDeviceCombo->setEnabled(false);
         m_snapButton->setEnabled(false);
         break;
 
@@ -364,7 +315,6 @@ void ControlBar::updateUiForState(AppState state)
         m_stopButton->setVisible(false);
         m_formatButton->setEnabled(false);
         m_audioButton->setEnabled(false);
-        m_audioDeviceCombo->setEnabled(false);
         m_snapButton->setEnabled(false);
         break;
 

@@ -30,6 +30,7 @@ public:
     // Qt propagates the property changes to every menu/toolbar that holds them.
     void sync(AppState state,
               const RecordingSettings& settings,
+              bool hasPreviewMedia,
               bool followEnabled,
               bool uiVisible);
 
@@ -53,6 +54,7 @@ public:
 
     // One-shot actions
     QAction* snapAspect  = nullptr;   // snap region to nearest 16:9 / 9:16
+    QAction* openPreview = nullptr;   // open preview/edit window
     QAction* preferences = nullptr;   // open the Preferences dialog
     QAction* showHide    = nullptr;   // toggle capture UI window visibility
     QAction* quit        = nullptr;   // quit the application
@@ -67,6 +69,7 @@ signals:
     void hiDpiChangeRequested(bool on);
     void followMouseChangeRequested(bool on);
     void snapAspectRequested();
+    void openPreviewRequested();
     void preferencesRequested();
     void quitRequested();
 

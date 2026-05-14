@@ -30,7 +30,6 @@ public:
     // Restore the audio device combo selection from a saved ID.
     // Pass an empty string (or an ID that no longer exists) to select the
     // system default (index 0).  Does not emit audioDeviceChangeRequested.
-    void setAudioDeviceId(const QString& id);
     void setOutputDir(const QString& dir);
     void setOutputSize(QSize size);
     void setGrowStep(int step);
@@ -91,7 +90,6 @@ private:
 
     QPushButton* m_formatButton    = nullptr;
     QPushButton* m_audioButton     = nullptr;
-    QComboBox*   m_audioDeviceCombo = nullptr;
     QPushButton* m_recordButton    = nullptr;
     QPushButton* m_pauseButton     = nullptr;
     QPushButton* m_stopButton      = nullptr;
