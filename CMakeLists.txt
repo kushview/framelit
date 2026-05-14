@@ -70,6 +70,9 @@ if(UNIX AND NOT APPLE)
     list(APPEND SOURCES src/platform/x11_window.cpp)
 endif()
 
+# Common platform utilities
+list(APPEND SOURCES src/platform/windowhelpers.cpp)
+
 set(HEADERS
     src/appcontroller.hpp
     src/recorderworker.hpp

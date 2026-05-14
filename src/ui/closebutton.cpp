@@ -5,13 +5,12 @@
 #include <QPainter>
 #include <QTimer>
 
+#include "../platform/windowhelpers.hpp"
 #ifdef Q_OS_MACOS
 #include "../platform/macos_window.h"
 #endif
 
 namespace sc {
-
-static constexpr int kStatusWindowLevel = 25; // NSStatusWindowLevel
 
 CloseButton::CloseButton(QWidget* parent)
     : QWidget(parent)
@@ -38,14 +37,13 @@ void CloseButton::onRegionChanged(const sc::CaptureRegion& region)
 void CloseButton::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
-#ifdef Q_OS_MACOS
     WId wid = winId();
     QTimer::singleShot(0, this, [wid]() {
-        setWindowHidesOnDeactivate(reinterpret_cast<void*>(wid), false);
+        setupOverlayWindowOnShow(wid);
+#ifdef Q_OS_MACOS
         setNSWindowLevel(reinterpret_cast<void*>(wid), kStatusWindowLevel);
-        excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
-    });
 #endif
+    });
 }
 
 void CloseButton::paintEvent(QPaintEvent* event)

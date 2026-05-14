@@ -13,11 +13,9 @@
 #include <QScreen>
 #include <QTimer>
 
+#include "../platform/windowhelpers.hpp"
 #ifdef Q_OS_MACOS
 #include "../platform/macos_window.h"
-#endif
-#ifdef Q_OS_WIN
-#include <windows.h>
 #endif
 
 namespace sc {
@@ -52,19 +50,6 @@ ControlBar::ControlBar(CaptureWindow* captureWindow, QWidget* parent)
             snapToRegion(m_captureWindow->geometry());
     });
     m_snapTimer->start(16);
-
-#ifdef Q_OS_WIN
-    QTimer::singleShot(0, this, [this]() {
-        HWND hwnd = reinterpret_cast<HWND>(winId());
-        if (hwnd) {
-            BOOL result = SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
-            if (!result)
-                qWarning("[ControlBar] SetWindowDisplayAffinity failed");
-            else
-                qDebug("[ControlBar] Excluded from capture");
-        }
-    });
-#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -460,13 +445,10 @@ void ControlBar::mouseReleaseEvent(QMouseEvent* event)
 void ControlBar::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
-#ifdef Q_OS_MACOS
     WId wid = winId();
     QTimer::singleShot(0, this, [wid]() {
-        excludeWindowFromScreenCapture(reinterpret_cast<void*>(wid));
-        setWindowHidesOnDeactivate(reinterpret_cast<void*>(wid), false);
+        setupOverlayWindowOnShow(wid);
     });
-#endif
 }
 
 } // namespace sc

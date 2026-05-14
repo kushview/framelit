@@ -537,6 +537,7 @@ void AppController::onScreenshotRequested()
 
     // Hide all overlay windows so none of them appear in the grab.
     m_centerHandle->hide();
+    m_closeButton->hide();
     m_captureWindow->hide();
     m_controlBar->hide();
 
@@ -551,6 +552,7 @@ void AppController::onScreenshotRequested()
 
         m_captureWindow->show();
         m_centerHandle->show();
+        m_closeButton->show();
         m_controlBar->show();
         m_controlBar->snapToRegion(region.rect);
 
