@@ -189,6 +189,7 @@ public slots:
   void onScreenshotRequested();
   void onPreviewClosed();
   void onOpenPreviewRequested();
+  void onPreviewToggleRequested(bool show);
 
 signals:
   void stateChanged(sc::AppState newState);
@@ -222,6 +223,7 @@ private:
   bool m_applyingResize =
       false; // true while applyResizeDelta is calling onRegionChanged
   bool m_followMouse = false; // follow-mouse pan mode
+  bool m_previewVisible = false; // canonical preview visibility for UI sync
 
   CaptureWindow *m_captureWindow = nullptr;
   CenterHandle *m_centerHandle = nullptr;

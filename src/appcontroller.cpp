@@ -148,6 +148,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
     connect(m_controlBar, &ControlBar::letterboxChangeRequested,    this, &AppController::onLetterboxChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
+    connect(m_controlBar, &ControlBar::previewToggleRequested,      this, &AppController::onPreviewToggleRequested);
     connect(m_controlBar, &ControlBar::preferencesRequested,       this, &AppController::onPreferencesRequested);
 
     applySettingsToUI();
@@ -243,6 +244,13 @@ void AppController::syncActions()
 {
     if (!m_actions || !m_captureWindow || !m_controlBar)
         return;
+
+    // Keep control bar display in sync with canonical settings, including
+    // format changes originating from shared menu actions.
+    m_controlBar->setFormat(m_settings.format);
+    m_controlBar->setCaptureAudio(m_settings.captureAudio);
+    m_controlBar->setPreviewVisible(m_previewVisible);
+
     m_actions->sync(m_state, m_settings,
                     hasPreviewMediaInDir(m_settings.outputDir),
                     m_followMouse,
@@ -294,6 +302,7 @@ void AppController::onStartRequested()
 
     if (m_editWindow && m_editWindow->isVisible())
         m_editWindow->hide();
+    m_previewVisible = false;
 
     // Create strategy before the worker so it's ready to receive frames.
     if (m_settings.format == OutputFormat::Gif)
@@ -604,6 +613,8 @@ void AppController::openPreferencesDialog()
     if (captureWasVisible) m_captureWindow->show();
     if (barWasVisible)     m_controlBar->show();
     if (handleWasVisible)  m_centerHandle->show();
+    syncCenterHandleVisibility();
+    syncActions();
 }
 
 void AppController::onGrowRequested()   { applyResizeDelta(+m_settings.growStep); }
@@ -634,6 +645,8 @@ void AppController::onScreenshotRequested()
         m_closeButton->show();
         m_controlBar->show();
         m_controlBar->snapToRegion(region.rect);
+        syncCenterHandleVisibility();
+        syncActions();
 
         if (px.isNull())
             return;
@@ -725,24 +738,75 @@ void AppController::onRecordToggleRequested()
 
 void AppController::onPreviewClosed()
 {
+    m_previewVisible = false;
+
+    if (m_controlBar)
+        m_controlBar->setPreviewVisible(false);
+
+    if (m_captureWindow)
+        m_captureWindow->show();
+    if (m_controlBar) {
+        m_controlBar->show();
+        m_controlBar->snapToRegion(m_region.rect);
+        m_controlBar->raise();
+    }
+    syncCenterHandleVisibility();
+
     if (m_state == AppState::Preview)
         setState(AppState::Idle);
+    else
+        syncActions();
 }
 
 void AppController::onOpenPreviewRequested()
 {
+    onPreviewToggleRequested(true);
+}
+
+void AppController::onPreviewToggleRequested(bool show)
+{
     if (!isIdleLikeState(m_state) || !m_editWindow)
         return;
 
-    m_editWindow->setOutputDir(m_settings.outputDir);
-    m_editWindow->show();
-    m_editWindow->raise();
-    m_editWindow->activateWindow();
+    if (show) {
+        m_previewVisible = true;
+        m_editWindow->setOutputDir(m_settings.outputDir);
+        m_editWindow->show();
+        m_editWindow->raise();
+        m_editWindow->activateWindow();
 
-    if (!m_lastOutputPath.isEmpty())
-        m_editWindow->selectFile(m_lastOutputPath);
+        if (!m_lastOutputPath.isEmpty())
+            m_editWindow->selectFile(m_lastOutputPath);
 
-    setState(AppState::Preview);
+        if (m_captureWindow)
+            m_captureWindow->hide();
+        if (m_controlBar)
+            m_controlBar->hide();
+        syncCenterHandleVisibility();
+        setState(AppState::Preview);
+        return;
+    }
+
+    m_previewVisible = false;
+
+    if (m_controlBar)
+        m_controlBar->setPreviewVisible(false);
+
+    m_editWindow->hide();
+    if (m_captureWindow) {
+        m_captureWindow->show();
+        m_captureWindow->raise();
+    }
+    if (m_controlBar) {
+        m_controlBar->show();
+        m_controlBar->snapToRegion(m_region.rect);
+        m_controlBar->raise();
+    }
+    syncCenterHandleVisibility();
+    if (m_state == AppState::Preview)
+        setState(AppState::Idle);
+    else
+        syncActions();
 }
 
 void AppController::onFollowMouseTick()

@@ -34,6 +34,7 @@ public:
     void setOutputSize(QSize size);
     void setGrowStep(int step);
     void setFormat(sc::OutputFormat format);
+    void setPreviewVisible(bool visible);
     void setHiDpi(bool hiDpi);
     void setCaptureAudio(bool on);
     void setFollowMouse(bool enabled);
@@ -45,6 +46,7 @@ signals:
     void stopRequested();
     void pauseRequested();
     void resumeRequested();
+    void previewToggleRequested(bool show);
     void formatChangeRequested(sc::OutputFormat format);
     void audioChangeRequested(bool captureAudio);
     void audioDeviceChangeRequested(QString deviceId);
@@ -94,6 +96,7 @@ private:
     QPushButton* m_pauseButton     = nullptr;
     QPushButton* m_stopButton      = nullptr;
     QPushButton* m_snapButton      = nullptr;
+    QPushButton* m_previewButton   = nullptr;
     QPushButton* m_settingsButton  = nullptr;
     QPushButton* m_hiDpiButton     = nullptr;
     QPushButton* m_followMouseButton = nullptr;

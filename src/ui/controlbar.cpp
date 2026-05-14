@@ -11,6 +11,7 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScreen>
+#include <QSignalBlocker>
 #include <QTimer>
 
 #include "../platform/windowhelpers.hpp"
@@ -154,12 +155,28 @@ void ControlBar::buildUi()
     connect(m_snapButton, &QPushButton::clicked, this, &ControlBar::snapAspectRequested);
     layout->addWidget(m_snapButton);
 
+    m_previewButton = new QPushButton("□", this);
+    m_previewButton->setCheckable(true);
+    m_previewButton->setChecked(false);
+    m_previewButton->setFixedSize(28, 22);
+    m_previewButton->setToolTip("Show or hide preview");
+    m_previewButton->setStyleSheet(
+        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
+        " padding: 0; background: transparent; font-size: 12px; }"
+        "QPushButton:checked { color: #e2e8f0; border-color: #60a5fa; background: #1e293b; }"
+        "QPushButton:hover { border-color: #64748b; }");
+    connect(m_previewButton, &QPushButton::toggled, this, [this](bool show) {
+        emit previewToggleRequested(show);
+    });
+    layout->addWidget(m_previewButton);
+
     m_settingsButton = new QPushButton("⚙", this);
-    m_settingsButton->setFixedWidth(28);
+    m_settingsButton->setFixedSize(28, 22);
     m_settingsButton->setToolTip("Preferences");
     m_settingsButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: none; background: transparent; font-size: 14px; }"
-        "QPushButton:hover { color: #e2e8f0; }"
+        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
+        " background: transparent; font-size: 13px; }"
+        "QPushButton:hover { color: #e2e8f0; border-color: #64748b; }"
         "QPushButton:disabled { color: #475569; }");
     connect(m_settingsButton, &QPushButton::clicked, this, &ControlBar::preferencesRequested);
     layout->addWidget(m_settingsButton);
@@ -186,8 +203,10 @@ void ControlBar::setHiDpi(bool hiDpi)
 void ControlBar::setCaptureAudio(bool on)
 {
     m_captureAudio = on;
-    if (m_audioButton)
+    if (m_audioButton) {
+        const QSignalBlocker blocker(*m_audioButton);
         m_audioButton->setChecked(on);
+    }
 }
 
 void ControlBar::setFollowMouse(bool enabled)
@@ -228,6 +247,14 @@ void ControlBar::setFormat(sc::OutputFormat format)
     const bool isVideo = (format != OutputFormat::Gif);
     m_formatButton->setText(isVideo ? "MP4" : "GIF");
     m_audioButton->setVisible(isVideo);
+}
+
+void ControlBar::setPreviewVisible(bool visible)
+{
+    if (!m_previewButton)
+        return;
+    const QSignalBlocker blocker(*m_previewButton);
+    m_previewButton->setChecked(visible);
 }
 
 
@@ -293,6 +320,7 @@ void ControlBar::updateUiForState(AppState state)
         m_formatButton->setEnabled(true);
         m_audioButton->setEnabled(true);
         m_snapButton->setEnabled(true);
+        m_previewButton->setEnabled(true);
         break;
 
     case AppState::Recording:
@@ -303,6 +331,7 @@ void ControlBar::updateUiForState(AppState state)
         m_formatButton->setEnabled(false);
         m_audioButton->setEnabled(false);
         m_snapButton->setEnabled(false);
+        m_previewButton->setEnabled(false);
         break;
 
     case AppState::Paused:
@@ -316,6 +345,7 @@ void ControlBar::updateUiForState(AppState state)
         m_formatButton->setEnabled(false);
         m_audioButton->setEnabled(false);
         m_snapButton->setEnabled(false);
+        m_previewButton->setEnabled(false);
         break;
 
     default:

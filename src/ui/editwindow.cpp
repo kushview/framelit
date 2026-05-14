@@ -23,6 +23,7 @@
 #include <QMovie>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QShortcut>
 #include <QSplitter>
 #include <QStyle>
 #include <QToolBar>
@@ -128,8 +129,8 @@ void EditWindow::selectFile(const QString& path)
 
 void EditWindow::closeEvent(QCloseEvent* event)
 {
-    emit closed();
     QWidget::closeEvent(event);
+    emit closed();
 }
 
 void EditWindow::resizeEvent(QResizeEvent* event)
@@ -191,10 +192,6 @@ void EditWindow::buildUi(Actions* actions)
 
     centerLayout->addWidget(m_previewView, 1);
 
-    auto* transport = new QHBoxLayout();
-    transport->setContentsMargins(0, 0, 0, 0);
-    transport->setSpacing(8);
-
     m_playPauseButton = new QPushButton(QStringLiteral("Play"), center);
     m_stopButton = new QPushButton(QStringLiteral("Stop"), center);
     m_timeline = new TimelineRangeWidget(center);
@@ -202,10 +199,25 @@ void EditWindow::buildUi(Actions* actions)
     m_timeLabel = new QLabel(QStringLiteral("00:00 / 00:00"), center);
     m_timeLabel->setMinimumWidth(110);
 
-    transport->addWidget(m_playPauseButton);
-    transport->addWidget(m_stopButton);
-    transport->addWidget(m_timeline, 1);
-    transport->addWidget(m_timeLabel);
+    auto* transport = new QVBoxLayout();
+    transport->setContentsMargins(0, 0, 0, 0);
+    transport->setSpacing(4);
+
+    auto* sliderRow = new QHBoxLayout();
+    sliderRow->setContentsMargins(0, 0, 0, 0);
+    sliderRow->setSpacing(8);
+    sliderRow->addWidget(m_timeline, 1);
+    sliderRow->addWidget(m_timeLabel);
+
+    auto* buttonRow = new QHBoxLayout();
+    buttonRow->setContentsMargins(0, 0, 0, 0);
+    buttonRow->setSpacing(8);
+    buttonRow->addWidget(m_playPauseButton);
+    buttonRow->addWidget(m_stopButton);
+    buttonRow->addStretch();
+
+    transport->addLayout(sliderRow);
+    transport->addLayout(buttonRow);
 
     centerLayout->addLayout(transport);
 
@@ -221,6 +233,14 @@ void EditWindow::buildUi(Actions* actions)
     m_videoSink = new QVideoSink(this);
     m_player->setVideoSink(m_videoSink);
     m_store = new PreviewStore(this);
+
+    // Space bar triggers play/pause regardless of which child widget has focus.
+    auto* spaceShortcut = new QShortcut(Qt::Key_Space, this);
+    spaceShortcut->setContext(Qt::WindowShortcut);
+    connect(spaceShortcut, &QShortcut::activated, this, [this]() {
+        if (m_playPauseButton && m_playPauseButton->isEnabled())
+            m_playPauseButton->click();
+    });
 
     connect(m_fileList, &QListWidget::currentRowChanged, this, [this](int row) {
         if (row < 0)
@@ -373,7 +393,7 @@ void EditWindow::refreshFileList()
 
     const QFileInfoList files = dir.entryInfoList(
         QDir::Files | QDir::Readable,
-        QDir::Time);
+        QDir::Time | QDir::Reversed);
 
     int preferredIndex = -1;
     for (const QFileInfo& fi : files) {
@@ -501,14 +521,13 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
             event->accept();
             return;
         }
-        if (event->key() == Qt::Key_Space) {
-            // Pause/resume toggle
-            if (m_player) {
-                if (m_player->playbackState() == QMediaPlayer::PlayingState) {
-                    m_player->pause();
-                } else {
-                    m_player->play();
-                }
+        if (event->key() == Qt::Key_J) {
+            // Step backward 2 seconds
+            if (m_player && !m_isGif) {
+                const qint64 pos = qMax<qint64>(0, m_player->position() - 500);
+                m_player->setPosition(pos);
+                m_timeline->setPositionMs(pos);
+                updateTimeLabel(pos, m_durationMs);
             }
             event->accept();
             return;
@@ -522,8 +541,9 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
             return;
         }
         if (event->key() == Qt::Key_L) {
-            // Resume/play
+            // Resume/play forward
             if (m_player) {
+                m_player->setPlaybackRate(1.0);
                 m_player->play();
             }
             event->accept();
