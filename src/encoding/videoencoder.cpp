@@ -61,9 +61,13 @@ bool VideoEncoder::start(const QString& outputPath, QSize frameSize)
     if (m_settings.format == OutputFormat::WebM) {
         format.setFileFormat(QMediaFormat::WebM);
         format.setVideoCodec(QMediaFormat::VideoCodec::VP8);
+        if (m_settings.captureAudio)
+            format.setAudioCodec(QMediaFormat::AudioCodec::Opus);
     } else {
         format.setFileFormat(QMediaFormat::MPEG4);
         format.setVideoCodec(QMediaFormat::VideoCodec::H264);
+        if (m_settings.captureAudio)
+            format.setAudioCodec(QMediaFormat::AudioCodec::AAC);
     }
 
     m_recorder.setMediaFormat(format);

@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Open Framelit (macOS)",
+      "type": "shell",
+      "command": "open",
+      "args": [
+        "build/Framelit.app"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

@@ -902,6 +902,11 @@ void AppController::loadSettings()
     QSettings qs("sc", "ScreenCapture");
     m_settings = RecordingSettings::load(qs);
 
+    // UI exposes GIF/MP4 only. Migrate any legacy WebM setting to MP4 so
+    // recording behavior matches what the controls display.
+    if (m_settings.format == OutputFormat::WebM)
+        m_settings.format = OutputFormat::Mp4;
+
     QRect savedRect = qs.value("captureRect").toRect();
     if (savedRect.isValid())
         m_region.rect = savedRect;
