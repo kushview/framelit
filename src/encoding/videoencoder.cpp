@@ -89,6 +89,7 @@ bool VideoEncoder::start(const QString& outputPath, QSize frameSize)
     case QualityPreset::Medium:
     default:                    qtQuality = QMediaRecorder::HighQuality;     break;
     }
+
     m_recorder.setQuality(qtQuality);
 
     qDebug("[VideoEncoder] start: %dx%d @ %dfps  quality=%d (CRF mode)",

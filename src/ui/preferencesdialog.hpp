@@ -18,6 +18,7 @@ public:
 signals:
     void outputDirChangeRequested(QString dir);
     void outputSizeChangeRequested(QSize size);
+    void qualityChangeRequested(QualityPreset quality);
     void growStepChangeRequested(int step);
     void letterboxChangeRequested(bool letterbox);
     void demoModeChangeRequested(bool on);

@@ -175,6 +175,7 @@ public slots:
   void onAudioOutputDeviceChangeRequested(const QString &deviceId);
   void onOutputDirChangeRequested(const QString &dir);
   void onOutputSizeChangeRequested(QSize size);
+  void onQualityChangeRequested(QualityPreset quality);
   void onGrowStepChangeRequested(int step);
   void onFollowMouseChangeRequested(bool enabled);
   void onFollowMouseToggleRequested();

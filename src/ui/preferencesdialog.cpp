@@ -78,6 +78,19 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
     }
     form->addRow("Output size:", sizeCombo);
 
+    // Output quality
+    auto* qualityCombo = new QComboBox(this);
+    qualityCombo->addItem("Low", static_cast<int>(QualityPreset::Low));
+    qualityCombo->addItem("Medium", static_cast<int>(QualityPreset::Medium));
+    qualityCombo->addItem("High", static_cast<int>(QualityPreset::High));
+    for (int i = 0; i < qualityCombo->count(); ++i) {
+        if (qualityCombo->itemData(i).toInt() == static_cast<int>(settings.quality)) {
+            qualityCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    form->addRow("Output quality:", qualityCombo);
+
     // Grow/shrink step
     auto* growStepSpin = new QSpinBox(this);
     growStepSpin->setRange(1, 200);
@@ -137,10 +150,11 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
     auto* buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     connect(buttons, &QDialogButtonBox::accepted, this,
-            [this, dirEdit, sizeCombo, growStepSpin, letterboxCheck, demoCheck,
+            [this, dirEdit, sizeCombo, qualityCombo, growStepSpin, letterboxCheck, demoCheck,
              audioInputCombo, audioOutputCombo,
              savedDir    = settings.outputDir,
              savedSize   = settings.outputSize,
+             savedQuality = settings.quality,
              savedStep   = settings.growStep,
              savedLb     = settings.letterbox,
              savedDemo   = settings.demoMode,
@@ -154,6 +168,10 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
         const QSize size = sizeCombo->currentData().value<QSize>();
         if (size != savedSize)
             emit outputSizeChangeRequested(size);
+
+        const QualityPreset quality = static_cast<QualityPreset>(qualityCombo->currentData().toInt());
+        if (quality != savedQuality)
+            emit qualityChangeRequested(quality);
 
         const int step = growStepSpin->value();
         if (step != savedStep)

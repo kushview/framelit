@@ -549,6 +549,14 @@ void AppController::onOutputSizeChangeRequested(QSize size)
     saveSettings();
 }
 
+void AppController::onQualityChangeRequested(QualityPreset quality)
+{
+    if (!isIdleLikeState(m_state))
+        return;
+    m_settings.quality = quality;
+    saveSettings();
+}
+
 void AppController::onGrowStepChangeRequested(int step)
 {
     if (!isIdleLikeState(m_state))
@@ -593,6 +601,7 @@ void AppController::openPreferencesDialog()
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     connect(dlg, &PreferencesDialog::outputDirChangeRequested,  this, &AppController::onOutputDirChangeRequested);
     connect(dlg, &PreferencesDialog::outputSizeChangeRequested, this, &AppController::onOutputSizeChangeRequested);
+    connect(dlg, &PreferencesDialog::qualityChangeRequested,    this, &AppController::onQualityChangeRequested);
     connect(dlg, &PreferencesDialog::growStepChangeRequested,   this, &AppController::onGrowStepChangeRequested);
     connect(dlg, &PreferencesDialog::letterboxChangeRequested,  this, &AppController::onLetterboxChangeRequested);
     connect(dlg, &PreferencesDialog::demoModeChangeRequested,   this, &AppController::onDemoModeChangeRequested);
