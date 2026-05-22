@@ -258,18 +258,6 @@ if(APPLE)
             COMMENT "Signing Framelit.app (hardened runtime + timestamp)"
         )
     endif()
-
-    # Notarize Example
-    # echo "Notarizing"
-    # xcrun notarytool submit \
-    #     "deploy/${PKG_FILENAME}" \
-    #     --keychain-profile "notarytool-profile" \
-    #     --wait
-
-    # echo "Stapling notarization ticket..."
-    # xcrun stapler staple "deploy/${PKG_FILENAME}"
-    # xcrun stapler validate "deploy/${PKG_FILENAME}"
-
 endif()
 
 # ---------------------------------------------------------------------------
