@@ -42,7 +42,7 @@ void BufferedStrategy::finish()
 
     GifExportSettings gifSettings;
     gifSettings.outputFps  = qMin(10, m_settings.fps);
-    gifSettings.outputSize = m_settings.outputSize;
+    gifSettings.outputSize = m_settings.gifOutputSize;
     if (m_settings.hiDpi) {
         const QScreen* screen = m_frameStore->frameAt(0).region.screen;
         const qreal dpr = screen ? screen->devicePixelRatio() : 2.0;
