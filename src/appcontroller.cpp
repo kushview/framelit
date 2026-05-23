@@ -622,15 +622,20 @@ void AppController::openPreferencesDialog()
     const bool captureWasVisible = m_captureWindow && m_captureWindow->isVisible();
     const bool barWasVisible     = m_controlBar    && m_controlBar->isVisible();
     const bool handleWasVisible  = m_centerHandle  && m_centerHandle->isVisible();
+    const bool closeButtonWasVisible = m_closeButton && m_closeButton->isVisible();
+
     if (m_captureWindow) m_captureWindow->hide();
     if (m_controlBar)    m_controlBar->hide();
     if (m_centerHandle)  m_centerHandle->hide();
+    if (m_closeButton)   m_closeButton->hide();
 
     dlg->exec();
 
     if (captureWasVisible) m_captureWindow->show();
     if (barWasVisible)     m_controlBar->show();
     if (handleWasVisible)  m_centerHandle->show();
+    if (closeButtonWasVisible) m_closeButton->show();
+    
     syncCenterHandleVisibility();
     syncActions();
 }
