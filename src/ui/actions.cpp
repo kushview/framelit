@@ -12,7 +12,7 @@ Actions::Actions(QObject* parent)
     : QObject(parent)
 {
     // Recording lifecycle
-    record      = new QAction(QStringLiteral("Record"),  this);
+    record      = new QAction(QStringLiteral("Capture"), this);
     pauseResume = new QAction(QStringLiteral("Pause"),   this);
     stop        = new QAction(QStringLiteral("Stop"),    this);
 
@@ -27,18 +27,18 @@ Actions::Actions(QObject* parent)
     m_formatGroup->addAction(formatMp4);
 
     // Toggle settings
-    audio       = new QAction(QStringLiteral("Capture Audio"), this);
+    audio       = new QAction(QStringLiteral("Mic"), this);
     audio->setCheckable(true);
-    hiDpi       = new QAction(QStringLiteral("HiDPI 2x"), this);
+    hiDpi       = new QAction(QStringLiteral("Hi-Res"), this);
     hiDpi->setCheckable(true);
-    followMouse = new QAction(QStringLiteral("Follow Mouse"), this);
+    followMouse = new QAction(QStringLiteral("Follow Cursor"), this);
     followMouse->setCheckable(true);
 
     // One-shot actions
-    snapAspect  = new QAction(QStringLiteral("Snap Aspect (16:9 / 9:16)"), this);
-    openPreview = new QAction(QStringLiteral("Open Preview"), this);
-    openOutputDir = new QAction(QStringLiteral("Open Output Folder"), this);
-    preferences = new QAction(QStringLiteral("Preferences\u2026"), this);
+    snapAspect  = new QAction(QStringLiteral("Snap Frame"), this);
+    openPreview = new QAction(QStringLiteral("Preview"), this);
+    openOutputDir = new QAction(QStringLiteral("Open Folder"), this);
+    preferences = new QAction(QStringLiteral("Settings\u2026"), this);
     showHide    = new QAction(QString(), this);
     quit        = new QAction(QStringLiteral("Quit"), this);
 
@@ -105,8 +105,8 @@ void Actions::sync(AppState state,
     }
 
     showHide->setText(uiVisible
-        ? QStringLiteral("Hide Capture UI")
-        : QStringLiteral("Show Capture UI"));
+        ? QStringLiteral("Hide Frame")
+        : QStringLiteral("Show Frame"));
 }
 
 } // namespace sc
