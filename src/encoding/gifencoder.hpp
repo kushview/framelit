@@ -13,6 +13,7 @@ class FrameStore;
 struct GifExportSettings {
     int outputFps  = 10;             // target playback FPS (≤ recording FPS)
     QSize outputSize = {800, 450};   // final encoded dimensions
+    bool useCurrentFrameSize = false; // use latest captured frame size at stop
     QualityPreset quality = QualityPreset::Medium;
     bool letterbox = true;           // preserve aspect ratio with black bars
 };

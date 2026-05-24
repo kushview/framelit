@@ -73,18 +73,12 @@ void GifEncoder::encode()
         return scaled;
     };
 
-    // Determine output dimensions from the first frame — the GIF logical
-    // screen descriptor must be written once with fixed dimensions.
-    if (m_store->frameAt(0).image.isNull()) {
-        emit failed(QStringLiteral("First frame could not be decoded."));
-        return;
-    }
-
-    // Final output dimensions come from settings.
-    const int outW = m_gifSettings.outputSize.width();
-    const int outH = m_gifSettings.outputSize.height();
-
-    qDebug("[GIF] fixed output: %dx%d", outW, outH);
+    const int outW = qMax(1, m_gifSettings.outputSize.width());
+    const int outH = qMax(1, m_gifSettings.outputSize.height());
+    qDebug(m_gifSettings.useCurrentFrameSize
+               ? "[GIF] output from frame size setting: %dx%d"
+               : "[GIF] fixed output from settings: %dx%d",
+           outW, outH);
 
     GifFileType* gif = EGifOpenFileName(pathBytes.constData(), false, &gifError);
     if (!gif) {

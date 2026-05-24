@@ -549,6 +549,14 @@ void AppController::onGifOutputSizeChangeRequested(QSize size)
     saveSettings();
 }
 
+void AppController::onGifUseFrameSizeChangeRequested(bool on)
+{
+    if (!isIdleLikeState(m_state))
+        return;
+    m_settings.gifUseFrameSize = on;
+    saveSettings();
+}
+
 void AppController::onOutputSizeChangeRequested(QSize size)
 {
     if (!isIdleLikeState(m_state))
@@ -608,6 +616,7 @@ void AppController::openPreferencesDialog()
     auto* dlg = new PreferencesDialog(m_settings, nullptr);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     connect(dlg, &PreferencesDialog::gifOutputSizeChangeRequested, this, &AppController::onGifOutputSizeChangeRequested);
+    connect(dlg, &PreferencesDialog::gifUseFrameSizeChangeRequested, this, &AppController::onGifUseFrameSizeChangeRequested);
     connect(dlg, &PreferencesDialog::outputDirChangeRequested,  this, &AppController::onOutputDirChangeRequested);
     connect(dlg, &PreferencesDialog::outputSizeChangeRequested, this, &AppController::onOutputSizeChangeRequested);
     connect(dlg, &PreferencesDialog::qualityChangeRequested,    this, &AppController::onQualityChangeRequested);

@@ -40,11 +40,24 @@ void BufferedStrategy::finish()
         m_settings.outputDir,
         QStringLiteral("gif"));
 
+    int sizeSourceIndex = count - 1;
+    while (sizeSourceIndex >= 0 && m_frameStore->frameAt(sizeSourceIndex).image.isNull())
+        --sizeSourceIndex;
+    if (sizeSourceIndex < 0) {
+        emit encodingFailed(QStringLiteral("No decodable frames captured."));
+        return;
+    }
+
+    const TaggedFrame& sizeFrame = m_frameStore->frameAt(sizeSourceIndex);
+
     GifExportSettings gifSettings;
     gifSettings.outputFps  = qMin(10, m_settings.fps);
-    gifSettings.outputSize = m_settings.gifOutputSize;
+    gifSettings.useCurrentFrameSize = m_settings.gifUseFrameSize;
+    gifSettings.outputSize = m_settings.gifUseFrameSize
+        ? sizeFrame.region.rect.size()
+        : m_settings.gifOutputSize;
     if (m_settings.hiDpi) {
-        const QScreen* screen = m_frameStore->frameAt(0).region.screen;
+        const QScreen* screen = sizeFrame.region.screen;
         const qreal dpr = screen ? screen->devicePixelRatio() : 2.0;
         gifSettings.outputSize *= dpr;
     }

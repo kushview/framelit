@@ -74,7 +74,8 @@ struct RecordingSettings {
   bool demoMode =
       false; // when true, app windows are visible to external screen recorders
   QSize outputSize = {800, 450}; // base output size; doubled when hiDpi is on
-    QSize gifOutputSize = {800, 450}; // GIF-only output size; doubled when hiDpi is on
+  QSize gifOutputSize = {800, 450}; // GIF-only output size; doubled when hiDpi is on
+  bool gifUseFrameSize = false;     // GIF-only: encode at current frame size
   QString audioDeviceId;         // empty = system default (input)
   QString audioOutputDeviceId;   // empty = system default (output)
   QString outputDir;
@@ -98,6 +99,7 @@ struct RecordingSettings {
               qs.value("outputSizeH", s.outputSize.height()).toInt());
     s.gifOutputSize = QSize(qs.value("gifOutputSizeW", s.outputSize.width()).toInt(),
                 qs.value("gifOutputSizeH", s.outputSize.height()).toInt());
+    s.gifUseFrameSize = qs.value("gifUseFrameSize", s.gifUseFrameSize).toBool();
     s.audioDeviceId = qs.value("audioDeviceId", s.audioDeviceId).toString();
     s.audioOutputDeviceId =
         qs.value("audioOutputDeviceId", s.audioOutputDeviceId).toString();
@@ -123,6 +125,7 @@ struct RecordingSettings {
     qs.setValue("outputSizeH", outputSize.height());
     qs.setValue("gifOutputSizeW", gifOutputSize.width());
     qs.setValue("gifOutputSizeH", gifOutputSize.height());
+    qs.setValue("gifUseFrameSize", gifUseFrameSize);
     qs.setValue("audioDeviceId", audioDeviceId);
     qs.setValue("audioOutputDeviceId", audioOutputDeviceId);
     qs.setValue("letterbox", letterbox);
@@ -180,6 +183,7 @@ public slots:
   void onAudioOutputDeviceChangeRequested(const QString &deviceId);
   void onOutputDirChangeRequested(const QString &dir);
   void onGifOutputSizeChangeRequested(QSize size);
+  void onGifUseFrameSizeChangeRequested(bool on);
   void onOutputSizeChangeRequested(QSize size);
   void onQualityChangeRequested(QualityPreset quality);
   void onGrowStepChangeRequested(int step);

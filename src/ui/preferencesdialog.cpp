@@ -109,7 +109,14 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
     populateSizeCombo(gifSizeCombo, settings.gifOutputSize);
     populateSizeCombo(mp4SizeCombo, settings.outputSize);
 
+        auto* gifUseFrameSizeCheck = new QCheckBox("Use current frame size", this);
+        gifUseFrameSizeCheck->setChecked(settings.gifUseFrameSize);
+        gifSizeCombo->setEnabled(!settings.gifUseFrameSize);
+        connect(gifUseFrameSizeCheck, &QCheckBox::toggled, this,
+            [gifSizeCombo](bool on) { gifSizeCombo->setEnabled(!on); });
+
     form->addRow("GIF size:", gifSizeCombo);
+        form->addRow(QString(), gifUseFrameSizeCheck);
     form->addRow("Video size:", mp4SizeCombo);
 
     // Output quality
@@ -188,10 +195,11 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
     auto* buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     connect(buttons, &QDialogButtonBox::accepted, this,
-            [this, dirEdit, gifSizeCombo, mp4SizeCombo, qualityCombo, growStepSpin, letterboxCheck, demoCheck,
+            [this, dirEdit, gifSizeCombo, gifUseFrameSizeCheck, mp4SizeCombo, qualityCombo, growStepSpin, letterboxCheck, demoCheck,
              audioInputCombo, audioOutputCombo,
              savedDir    = settings.outputDir,
              savedGifSize = settings.gifOutputSize,
+             savedGifUseFrameSize = settings.gifUseFrameSize,
              savedSize   = settings.outputSize,
              savedQuality = settings.quality,
              savedStep   = settings.growStep,
@@ -207,6 +215,10 @@ PreferencesDialog::PreferencesDialog(const RecordingSettings& settings,
         const QSize gifSize = gifSizeCombo->currentData().value<QSize>();
         if (gifSize != savedGifSize)
             emit gifOutputSizeChangeRequested(gifSize);
+
+        const bool gifUseFrameSize = gifUseFrameSizeCheck->isChecked();
+        if (gifUseFrameSize != savedGifUseFrameSize)
+            emit gifUseFrameSizeChangeRequested(gifUseFrameSize);
 
         const QSize size = mp4SizeCombo->currentData().value<QSize>();
         if (size != savedSize)
