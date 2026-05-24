@@ -31,7 +31,7 @@ void setupOverlayWindowOnShow(WId wid)
 #endif
 
     // X11: No special setup needed in showEvent; click-through is handled
-    // via XShape in setWindowClickThrough() which is called elsewhere as needed.
+    // via XShape in setX11WindowClickThrough() through the common helper.
 }
 
 void setWindowClickThrough(WId wid, bool enabled)
@@ -40,7 +40,7 @@ void setWindowClickThrough(WId wid, bool enabled)
     void* nativeHandle = reinterpret_cast<void*>(wid);
     ::setWindowClickThrough(nativeHandle, enabled);
 #elif defined(Q_OS_LINUX)
-    sc::setWindowClickThrough(wid, enabled); // X11 implementation
+    sc::setX11WindowClickThrough(wid, enabled);
 #else
     // No-op on other platforms for now
     (void)wid;

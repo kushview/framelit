@@ -10,7 +10,7 @@
 
 namespace sc {
 
-void setWindowClickThrough(WId wid, bool enabled)
+void setX11WindowClickThrough(WId wid, bool enabled)
 {
     Display* display = XOpenDisplay(nullptr);
     if (!display)
