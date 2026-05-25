@@ -47,6 +47,11 @@ mkdir -p "${STAGE_DIR}"
 cp -R "${APP_PATH}" "${STAGE_DIR}/${APP_NAME}.app"
 ln -s /Applications "${STAGE_DIR}/Applications"
 
+# Hint to Spotlight/FSEvents not to index the mounted DMG volume.
+touch "${STAGE_DIR}/.metadata_never_index"
+mkdir -p "${STAGE_DIR}/.fseventsd"
+touch "${STAGE_DIR}/.fseventsd/no_log"
+
 if [[ -f "${BACKGROUND_IMG}" ]]; then
   mkdir -p "${STAGE_DIR}/.background"
   cp "${BACKGROUND_IMG}" "${STAGE_DIR}/.background/background.png"
