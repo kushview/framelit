@@ -573,6 +573,14 @@ void AppController::onQualityChangeRequested(QualityPreset quality)
     saveSettings();
 }
 
+void AppController::onGifQualityChangeRequested(QualityPreset quality)
+{
+    if (!isIdleLikeState(m_state))
+        return;
+    m_settings.gifQuality = quality;
+    saveSettings();
+}
+
 void AppController::onGrowStepChangeRequested(int step)
 {
     if (!isIdleLikeState(m_state))
@@ -586,11 +594,17 @@ void AppController::onSnapAspectRequested()
     if (!isIdleLikeState(m_state))
         return;
     QRect r = m_region.rect;
-    // Landscape → 16:9; portrait/square → 9:16.
-    if (r.width() >= r.height())
-        r.setHeight(r.width() * 9 / 16);
-    else
-        r.setWidth(r.height() * 9 / 16);
+
+    const QSize targetSize = (m_settings.format == OutputFormat::Gif)
+        ? m_settings.gifOutputSize
+        : m_settings.outputSize;
+    const double aspect = (targetSize.height() > 0)
+        ? double(targetSize.width()) / targetSize.height()
+        : 0.0;
+    if (aspect <= 0.0)
+        return;
+
+    r.setHeight(qMax(CaptureWindow::kMinDimension, qRound(r.width() / aspect)));
     onRegionChanged(r);
 }
 
@@ -620,6 +634,7 @@ void AppController::openPreferencesDialog()
     connect(dlg, &PreferencesDialog::outputDirChangeRequested,  this, &AppController::onOutputDirChangeRequested);
     connect(dlg, &PreferencesDialog::outputSizeChangeRequested, this, &AppController::onOutputSizeChangeRequested);
     connect(dlg, &PreferencesDialog::qualityChangeRequested,    this, &AppController::onQualityChangeRequested);
+    connect(dlg, &PreferencesDialog::gifQualityChangeRequested, this, &AppController::onGifQualityChangeRequested);
     connect(dlg, &PreferencesDialog::growStepChangeRequested,   this, &AppController::onGrowStepChangeRequested);
     connect(dlg, &PreferencesDialog::letterboxChangeRequested,  this, &AppController::onLetterboxChangeRequested);
     connect(dlg, &PreferencesDialog::demoModeChangeRequested,   this, &AppController::onDemoModeChangeRequested);

@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QScreen>
 
+#include <limits>
+
 #include <gif_lib.h>
 
 namespace sc {
@@ -75,10 +77,16 @@ void GifEncoder::encode()
 
     const int outW = qMax(1, m_gifSettings.outputSize.width());
     const int outH = qMax(1, m_gifSettings.outputSize.height());
+    int targetColors = 128;
+    switch (m_gifSettings.quality) {
+    case QualityPreset::Low:    targetColors = 64;  break;
+    case QualityPreset::Medium: targetColors = 128; break;
+    case QualityPreset::High:   targetColors = 256; break;
+    }
     qDebug(m_gifSettings.useCurrentFrameSize
-               ? "[GIF] output from frame size setting: %dx%d"
-               : "[GIF] fixed output from settings: %dx%d",
-           outW, outH);
+               ? "[GIF] output from frame size setting: %dx%d, colors=%d"
+               : "[GIF] fixed output from settings: %dx%d, colors=%d",
+           outW, outH, targetColors);
 
     GifFileType* gif = EGifOpenFileName(pathBytes.constData(), false, &gifError);
     if (!gif) {
@@ -121,15 +129,53 @@ void GifEncoder::encode()
         // Scale to output dimensions if needed.
         img = scaleImage(img, QSize(outW, outH), m_gifSettings.letterbox);
 
-        // Quantize to 256 colours using Qt's built-in dithering.
+        // Quantize to indexed color and enforce a palette budget by remapping
+        // excess colors to the nearest retained palette entry.
         QImage indexed = img.convertToFormat(QImage::Format_Indexed8,
                                              Qt::DiffuseDither |
                                              Qt::PreferDither);
         const QVector<QRgb> colorTable = indexed.colorTable();
-        const int numColors = qMin(256, colorTable.size());
+        const int numColors = qMin(targetColors, colorTable.size());
+        if (numColors <= 0) {
+            EGifCloseFile(gif, &gifError);
+            emit failed(QStringLiteral("No colors available after GIF quantization."));
+            return;
+        }
+
+        if (colorTable.size() > numColors) {
+            QVector<uchar> remap(colorTable.size());
+            for (int src = 0; src < colorTable.size(); ++src) {
+                if (src < numColors) {
+                    remap[src] = static_cast<uchar>(src);
+                    continue;
+                }
+
+                const QRgb c = colorTable[src];
+                int best = 0;
+                int bestDist = std::numeric_limits<int>::max();
+                for (int dst = 0; dst < numColors; ++dst) {
+                    const QRgb p = colorTable[dst];
+                    const int dr = qRed(c) - qRed(p);
+                    const int dg = qGreen(c) - qGreen(p);
+                    const int db = qBlue(c) - qBlue(p);
+                    const int dist = dr * dr + dg * dg + db * db;
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = dst;
+                    }
+                }
+                remap[src] = static_cast<uchar>(best);
+            }
+
+            for (int row = 0; row < outH; ++row) {
+                auto* scanline = indexed.scanLine(row);
+                for (int col = 0; col < outW; ++col)
+                    scanline[col] = remap[scanline[col]];
+            }
+        }
 
         // Build giflib color map.
-        ColorMapObject* cmap = GifMakeMapObject(256, nullptr);
+        ColorMapObject* cmap = GifMakeMapObject(numColors, nullptr);
         if (!cmap) {
             EGifCloseFile(gif, &gifError);
             emit failed(QStringLiteral("GifMakeMapObject failed."));
@@ -140,9 +186,6 @@ void GifEncoder::encode()
             cmap->Colors[c].Green = qGreen(colorTable[c]);
             cmap->Colors[c].Blue  = qBlue(colorTable[c]);
         }
-        // Pad unused entries.
-        for (int c = numColors; c < 256; ++c)
-            cmap->Colors[c] = { 0, 0, 0 };
 
         // Graphic Control Extension: set frame delay.
         GraphicsControlBlock gcb{};

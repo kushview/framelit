@@ -145,8 +145,8 @@ void ControlBar::buildUi()
     });
     layout->addWidget(m_followMouseButton);
 
-    m_snapButton = new QPushButton("16:9", this);
-    m_snapButton->setToolTip("Snap capture region to 16:9 (or 9:16)");
+    m_snapButton = new QPushButton("Snap", this);
+    m_snapButton->setToolTip("Snap capture region to the output aspect ratio");
     m_snapButton->setStyleSheet(
         "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
         " padding: 2px 6px; background: transparent; font-size: 11px; }"
@@ -301,7 +301,6 @@ void ControlBar::onStateChanged(sc::AppState state)
 
 void ControlBar::onRegionChanged(const sc::CaptureRegion& region)
 {
-    m_snapButton->setText(region.rect.width() >= region.rect.height() ? "16:9" : "9:16");
     snapToRegion(region.rect);
 }
 

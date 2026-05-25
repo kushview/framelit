@@ -19,6 +19,7 @@ signals:
     void outputDirChangeRequested(QString dir);
     void gifOutputSizeChangeRequested(QSize size);
     void gifUseFrameSizeChangeRequested(bool on);
+    void gifQualityChangeRequested(QualityPreset quality);
     void outputSizeChangeRequested(QSize size);
     void qualityChangeRequested(QualityPreset quality);
     void growStepChangeRequested(int step);

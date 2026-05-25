@@ -61,7 +61,7 @@ void BufferedStrategy::finish()
         const qreal dpr = screen ? screen->devicePixelRatio() : 2.0;
         gifSettings.outputSize *= dpr;
     }
-    gifSettings.quality    = m_settings.quality;
+    gifSettings.quality    = m_settings.gifQuality;
     gifSettings.letterbox  = m_settings.letterbox;
 
     // Tear down any leftover encoder thread (shouldn't happen, defensive).

@@ -64,6 +64,7 @@ struct RecordingSettings {
   int fps = 30;
   OutputFormat format = OutputFormat::Gif;
   QualityPreset quality = QualityPreset::Medium;
+  QualityPreset gifQuality = QualityPreset::Medium;
   bool showCursor = true;
   bool showClicks = true;
   bool countdown = false;
@@ -89,6 +90,8 @@ struct RecordingSettings {
         qs.value("format", static_cast<int>(s.format)).toInt());
     s.quality = static_cast<QualityPreset>(
         qs.value("quality", static_cast<int>(s.quality)).toInt());
+    s.gifQuality = static_cast<QualityPreset>(
+      qs.value("gifQuality", static_cast<int>(s.gifQuality)).toInt());
     s.showCursor = qs.value("showCursor", s.showCursor).toBool();
     s.showClicks = qs.value("showClicks", s.showClicks).toBool();
     s.countdown = qs.value("countdown", s.countdown).toBool();
@@ -116,6 +119,7 @@ struct RecordingSettings {
     qs.setValue("fps", fps);
     qs.setValue("format", static_cast<int>(format));
     qs.setValue("quality", static_cast<int>(quality));
+    qs.setValue("gifQuality", static_cast<int>(gifQuality));
     qs.setValue("showCursor", showCursor);
     qs.setValue("showClicks", showClicks);
     qs.setValue("countdown", countdown);
@@ -186,6 +190,7 @@ public slots:
   void onGifUseFrameSizeChangeRequested(bool on);
   void onOutputSizeChangeRequested(QSize size);
   void onQualityChangeRequested(QualityPreset quality);
+  void onGifQualityChangeRequested(QualityPreset quality);
   void onGrowStepChangeRequested(int step);
   void onFollowMouseChangeRequested(bool enabled);
   void onFollowMouseToggleRequested();
