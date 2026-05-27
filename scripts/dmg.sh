@@ -18,6 +18,31 @@ APP_PATH="${APP_PATH:-${ROOT_DIR}/build/${APP_NAME}.app}"
 OUT_DMG="${OUT_DMG:-${ROOT_DIR}/${APP_NAME}.dmg}"
 BACKGROUND_IMG="${BACKGROUND_IMG:-${SCRIPT_DIR}/dmg-background.png}"
 
+detach_existing_volume() {
+  local volume_path="/Volumes/${VOL_NAME}"
+  local mounted_devices=""
+
+  mounted_devices="$(hdiutil info | awk -v vol="${volume_path}" '
+    /^\/dev\// { dev = $1 }
+    index($0, vol) > 0 { print dev }
+  ' | sort -u)"
+
+  if [[ -z "${mounted_devices}" ]]; then
+    return
+  fi
+
+  while IFS= read -r dev; do
+    [[ -z "${dev}" ]] && continue
+    echo "Unmounting existing ${VOL_NAME} volume (${dev})"
+    if ! hdiutil detach "${dev}" >/dev/null 2>&1; then
+      hdiutil detach -force "${dev}" >/dev/null 2>&1 || {
+        echo "error: failed to detach existing volume ${dev}" >&2
+        exit 1
+      }
+    fi
+  done <<< "${mounted_devices}"
+}
+
 if [[ ! -d "${APP_PATH}" ]]; then
   echo "error: app not found at ${APP_PATH}" >&2
   echo "build first (e.g. cmake -B build && cmake --build build) or set APP_PATH" >&2
@@ -42,6 +67,8 @@ cleanup() {
   rm -rf "${WORK_DIR}"
 }
 trap cleanup EXIT
+
+detach_existing_volume
 
 mkdir -p "${STAGE_DIR}"
 cp -R "${APP_PATH}" "${STAGE_DIR}/${APP_NAME}.app"
@@ -83,6 +110,7 @@ osascript <<APPLESCRIPT
 tell application "Finder"
   tell disk "${VOL_NAME}"
     open
+
     set current view of container window to icon view
     set toolbar visible of container window to false
     set statusbar visible of container window to false
@@ -92,6 +120,8 @@ tell application "Finder"
     set arrangement of viewOptions to not arranged
     set icon size of viewOptions to 160
     set text size of viewOptions to 13
+    set shows item info of viewOptions to false
+    set shows icon preview of viewOptions to false
 
     if "${HAS_BG}" is "true" then
       set background picture of viewOptions to file ".background:background.png"
