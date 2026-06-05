@@ -226,6 +226,7 @@ private:
   void applyResizeDelta(int delta);
   void updateFollowTimer(); // start/stop m_followTimer based on state + flag
   void syncCenterHandleVisibility();
+  void centerCaptureRegionAroundCursor();
   void setUiVisible(bool visible);
   void toggleUiVisible();
   void syncActions();           // calls m_actions->sync() with current state

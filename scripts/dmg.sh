@@ -92,7 +92,7 @@ hdiutil create \
   -format UDRW \
   "${RW_DMG}" >/dev/null
 
-DEVICE="$(hdiutil attach -readwrite -noverify -noautoopen "${RW_DMG}" | awk '/Apple_HFS/ {print $1; exit}')"
+DEVICE="$(hdiutil attach -readwrite -noverify -noautoopen -nobrowse "${RW_DMG}" | awk '/Apple_HFS/ {print $1; exit}')"
 if [[ -z "${DEVICE}" ]]; then
   echo "error: failed to mount temporary DMG" >&2
   exit 1
@@ -135,6 +135,7 @@ tell application "Finder"
     open
     update without registering applications
     delay 1
+    close
   end tell
 end tell
 APPLESCRIPT

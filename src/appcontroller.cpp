@@ -759,6 +759,30 @@ void AppController::syncCenterHandleVisibility()
     }
 }
 
+void AppController::centerCaptureRegionAroundCursor()
+{
+    const QPoint cursor = QCursor::pos();
+    QScreen* screen = QGuiApplication::screenAt(cursor);
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+    if (!screen)
+        return;
+
+    const QRect bounds = screen->availableGeometry();
+    const QSize size = m_region.rect.size().isEmpty()
+        ? QSize(800, 450)
+        : m_region.rect.size();
+
+    const QRect centered(
+        cursor.x() - size.width() / 2,
+        cursor.y() - size.height() / 2,
+        size.width(),
+        size.height());
+
+    m_region = CaptureRegion{screen, centered}.clampedTo(bounds);
+    emit regionChanged(m_region);
+}
+
 void AppController::onFollowMouseChangeRequested(bool enabled)
 {
     m_followMouse = enabled;
@@ -778,6 +802,9 @@ void AppController::onRecordToggleRequested()
     if (m_state == AppState::Recording || m_state == AppState::Paused)
         onStopRequested();
     else if (m_state == AppState::Idle || m_state == AppState::Positioning || m_state == AppState::Preview) {
+        const bool uiVisible = m_captureWindow && m_captureWindow->isVisible();
+        if (!uiVisible)
+            centerCaptureRegionAroundCursor();
         setUiVisible(true);
         onStartRequested();
     }
