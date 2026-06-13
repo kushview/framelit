@@ -88,6 +88,7 @@ private:
     bool m_previewScrubbing = false;
     bool m_resumeAfterPreviewScrub = false;
     bool m_isGif = false;
+    bool m_isStillImage = false;
 };
 
 } // namespace sc

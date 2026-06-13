@@ -54,6 +54,7 @@ bool hasPreviewMediaInDir(const QString& outputDir)
     const QStringList filters = {
         QStringLiteral("*.gif"),
         QStringLiteral("*.mp4"),
+        QStringLiteral("*.png"),
         QStringLiteral("*.webm")
     };
     return !dir.entryList(filters, QDir::Files | QDir::Readable, QDir::Time).isEmpty();
@@ -701,7 +702,15 @@ void AppController::onScreenshotRequested()
         const QString path = makeCaptureOutputPath(
             m_settings.outputDir,
             QStringLiteral("png"));
-        px.save(path, "PNG");
+        if (!px.save(path, "PNG"))
+            return;
+
+        m_lastOutputPath = path;
+        if (m_editWindow && m_editWindow->isVisible()) {
+            m_editWindow->setOutputDir(m_settings.outputDir);
+            m_editWindow->selectFile(path);
+        }
+        syncActions();
     });
 }
 

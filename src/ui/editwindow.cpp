@@ -21,6 +21,7 @@
 #include <QMediaPlayer>
 #include <QMessageBox>
 #include <QMovie>
+#include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShortcut>
@@ -68,7 +69,13 @@ bool isSupportedPreviewSuffix(const QString& suffix)
     const QString s = suffix.toLower();
     return s == QStringLiteral("gif") ||
            s == QStringLiteral("mp4") ||
+           s == QStringLiteral("png") ||
            s == QStringLiteral("webm");
+}
+
+bool isStillImageSuffix(const QString& suffix)
+{
+    return suffix.toLower() == QStringLiteral("png");
 }
 
 } // namespace
@@ -254,6 +261,8 @@ void EditWindow::buildUi(Actions* actions)
     connect(m_playPauseButton, &QPushButton::clicked, this, [this]() {
         if (m_currentFile.isEmpty())
             return;
+        if (m_isStillImage)
+            return;
         if (m_isGif) {
             if (!m_movie)
                 return;
@@ -283,6 +292,8 @@ void EditWindow::buildUi(Actions* actions)
     });
 
     connect(m_stopButton, &QPushButton::clicked, this, [this]() {
+        if (m_isStillImage)
+            return;
         if (m_isGif) {
             if (m_movie)
                 m_movie->stop();
@@ -296,13 +307,13 @@ void EditWindow::buildUi(Actions* actions)
     });
 
     connect(m_timeline, &TimelineRangeWidget::positionChangeRequested, this, [this](qint64 pos) {
-        if (!m_isGif)
+        if (!m_isGif && !m_isStillImage)
             m_player->setPosition(pos);
         updateTimeLabel(pos, m_durationMs);
     });
 
     connect(m_timeline, &TimelineRangeWidget::previewPositionRequested, this, [this](qint64 pos) {
-        if (m_isGif)
+        if (m_isGif || m_isStillImage)
             return;
 
         if (!m_previewScrubbing) {
@@ -319,7 +330,7 @@ void EditWindow::buildUi(Actions* actions)
     });
 
     connect(m_timeline, &TimelineRangeWidget::previewFinished, this, [this](qint64 restorePositionMs) {
-        if (m_isGif)
+        if (m_isGif || m_isStillImage)
             return;
 
         const bool resume = m_resumeAfterPreviewScrub;
@@ -347,6 +358,8 @@ void EditWindow::buildUi(Actions* actions)
     });
 
     connect(m_videoSink, &QVideoSink::videoFrameChanged, this, [this](const QVideoFrame& frame) {
+        if (m_isStillImage)
+            return;
         if (!frame.isValid())
             return;
         updateSceneFrame(frame.toImage());
@@ -440,9 +453,13 @@ void EditWindow::loadMediaFile(const QString& path)
     updateTimeLabel(0, 0);
 
     const QFileInfo fi(path);
-    m_isGif = (fi.suffix().toLower() == QStringLiteral("gif"));
+    const QString suffix = fi.suffix().toLower();
+    m_isGif = (suffix == QStringLiteral("gif"));
+    m_isStillImage = isStillImageSuffix(suffix);
 
-    if (m_isGif) {
+    if (m_isStillImage) {
+        updateSceneFrame(QImage(path));
+    } else if (m_isGif) {
         m_movie = new QMovie(path);
         m_movie->setCacheMode(QMovie::CacheAll);
         connect(m_movie, &QMovie::frameChanged, this, [this](int) {
@@ -490,7 +507,7 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
         }
         if (event->key() == Qt::Key_I) {
             // Set in-point to current playhead position
-            if (m_player && m_timeline && !m_currentFile.isEmpty()) {
+            if (m_player && m_timeline && !m_currentFile.isEmpty() && !m_isGif && !m_isStillImage) {
                 const qint64 pos = m_player->position();
                 m_inPointMs = pos;
                 m_timeline->setInOutMs(m_inPointMs, m_outPointMs);
@@ -501,7 +518,7 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
         }
         if (event->key() == Qt::Key_O) {
             // Set out-point to current playhead position
-            if (m_player && m_timeline && !m_currentFile.isEmpty()) {
+            if (m_player && m_timeline && !m_currentFile.isEmpty() && !m_isGif && !m_isStillImage) {
                 const qint64 pos = m_player->position();
                 m_outPointMs = pos;
                 m_timeline->setInOutMs(m_inPointMs, m_outPointMs);
@@ -512,7 +529,7 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
         }
         if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
             // Jump to in-point (if set) or beginning, then play
-            if (m_player && m_timeline) {
+            if (m_player && m_timeline && !m_isGif && !m_isStillImage) {
                 const qint64 startPos = (m_inPointMs > 0) ? m_inPointMs : 0;
                 m_player->setPosition(startPos);
                 m_timeline->setPositionMs(startPos);
@@ -523,7 +540,7 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
         }
         if (event->key() == Qt::Key_J) {
             // Step backward 2 seconds
-            if (m_player && !m_isGif) {
+            if (m_player && !m_isGif && !m_isStillImage) {
                 const qint64 pos = qMax<qint64>(0, m_player->position() - 500);
                 m_player->setPosition(pos);
                 m_timeline->setPositionMs(pos);
@@ -534,7 +551,7 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
         }
         if (event->key() == Qt::Key_K) {
             // Pause
-            if (m_player) {
+            if (m_player && !m_isGif && !m_isStillImage) {
                 m_player->pause();
             }
             event->accept();
@@ -542,7 +559,7 @@ void EditWindow::keyPressEvent(QKeyEvent* event)
         }
         if (event->key() == Qt::Key_L) {
             // Resume/play forward
-            if (m_player) {
+            if (m_player && !m_isGif && !m_isStillImage) {
                 m_player->setPlaybackRate(1.0);
                 m_player->play();
             }
@@ -576,6 +593,7 @@ void EditWindow::unloadMedia()
     m_timeline->setPositionMs(0);
     m_currentFile.clear();
     m_isGif = false;
+    m_isStillImage = false;
     updateTimeLabel(0, 0);
 }
 
@@ -601,10 +619,14 @@ void EditWindow::fitMediaToView()
 void EditWindow::syncTransportState()
 {
     const bool hasSelection = !m_currentFile.isEmpty();
-    m_playPauseButton->setEnabled(hasSelection);
-    m_stopButton->setEnabled(hasSelection);
+    const bool hasPlayableSelection = hasSelection && !m_isStillImage;
+    m_playPauseButton->setEnabled(hasPlayableSelection);
+    m_stopButton->setEnabled(hasPlayableSelection);
 
-    if (m_isGif) {
+    if (m_isStillImage) {
+        m_timeline->setEnabled(false);
+        m_playPauseButton->setText(QStringLiteral("Play"));
+    } else if (m_isGif) {
         m_timeline->setEnabled(false);
         if (!m_movie || m_movie->state() == QMovie::NotRunning)
             m_playPauseButton->setText(QStringLiteral("Play"));
