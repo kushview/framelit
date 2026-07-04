@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSimpleTextItem>
 #include <QPen>
+#include <QSignalBlocker>
 #include <QTimer>
 
 
@@ -125,11 +126,10 @@ void CaptureWindow::onStateChanged(sc::AppState state)
 
 void CaptureWindow::onRegionChanged(const sc::CaptureRegion& region)
 {
-    // Suppress re-emission from resizeEvent/moveEvent so we don't loop
-    // back through AppController when geometry is set programmatically.
-    m_suppressSignal = true;
+    // Block our own signals so the resize/move events that setGeometry triggers
+    // don't loop regionChanged back through AppController.
+    const QSignalBlocker blocker(this);
     setGeometry(region.rect);
-    m_suppressSignal = false;
 
     if (m_dimsItem)
         m_dimsItem->setText(region.dimensionsString());
@@ -182,15 +182,13 @@ void CaptureWindow::resizeEvent(QResizeEvent* event)
 {
     QGraphicsView::resizeEvent(event);
     updateSceneGeometry();
-    if (!m_suppressSignal)
-        emit regionChanged(geometry());
+    emit regionChanged(geometry()); // suppressed while signals are blocked
 }
 
 void CaptureWindow::moveEvent(QMoveEvent* event)
 {
     QGraphicsView::moveEvent(event);
-    if (!m_suppressSignal)
-        emit regionChanged(geometry());
+    emit regionChanged(geometry()); // suppressed while signals are blocked
 }
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@
 
 #include "../platform/windowhelpers.hpp"
 #ifdef Q_OS_MACOS
-#include "../platform/macos_window.h"
+#include "../platform/macos_window.hpp"
 #endif
 
 namespace sc {

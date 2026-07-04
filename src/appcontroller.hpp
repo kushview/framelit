@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QFileInfo>
 #include <QObject>
 #include <QRect>
 #include <QScreen>
@@ -24,8 +25,6 @@ namespace sc {
 
 enum class AppState {
   Idle,
-  Positioning,
-  Countdown,
   Recording,
   Paused,
   Processing,
@@ -65,9 +64,6 @@ struct RecordingSettings {
   OutputFormat format = OutputFormat::Gif;
   QualityPreset quality = QualityPreset::Medium;
   QualityPreset gifQuality = QualityPreset::Medium;
-  bool showCursor = true;
-  bool showClicks = true;
-  bool countdown = false;
   bool captureAudio = false; // mic audio muxed into MP4; no effect on GIF
   bool hiDpi = false; // 2× output resolution — multiplies outputSize by 2
   bool letterbox =
@@ -92,9 +88,6 @@ struct RecordingSettings {
         qs.value("quality", static_cast<int>(s.quality)).toInt());
     s.gifQuality = static_cast<QualityPreset>(
       qs.value("gifQuality", static_cast<int>(s.gifQuality)).toInt());
-    s.showCursor = qs.value("showCursor", s.showCursor).toBool();
-    s.showClicks = qs.value("showClicks", s.showClicks).toBool();
-    s.countdown = qs.value("countdown", s.countdown).toBool();
     s.captureAudio = qs.value("captureAudio", s.captureAudio).toBool();
     s.hiDpi = qs.value("hiDpi", s.hiDpi).toBool();
     s.outputSize =
@@ -111,6 +104,15 @@ struct RecordingSettings {
     s.outputDir = qs.value("outputDir", QStandardPaths::writableLocation(
                                             QStandardPaths::MoviesLocation))
                       .toString();
+    // Fall back to Movies if the stored dir is gone or unwritable (deleted,
+    // unmounted, permissions changed) — not only when the key is absent.
+    // Otherwise recording fails later with a cryptic encoder error.
+    {
+      const QFileInfo info(s.outputDir);
+      if (s.outputDir.isEmpty() || !info.isDir() || !info.isWritable())
+        s.outputDir = QStandardPaths::writableLocation(
+            QStandardPaths::MoviesLocation);
+    }
     s.growStep = qs.value("growStep", s.growStep).toInt();
     return s;
   }
@@ -120,9 +122,6 @@ struct RecordingSettings {
     qs.setValue("format", static_cast<int>(format));
     qs.setValue("quality", static_cast<int>(quality));
     qs.setValue("gifQuality", static_cast<int>(gifQuality));
-    qs.setValue("showCursor", showCursor);
-    qs.setValue("showClicks", showClicks);
-    qs.setValue("countdown", countdown);
     qs.setValue("captureAudio", captureAudio);
     qs.setValue("hiDpi", hiDpi);
     qs.setValue("outputSizeW", outputSize.width());

@@ -102,7 +102,7 @@ set(HEADERS
 if(APPLE)
     list(APPEND HEADERS
         src/platform/sckbackend.hpp
-        src/platform/macos_window.h
+        src/platform/macos_window.hpp
         src/globalhotkeys.hpp
     )
 else()
@@ -188,7 +188,14 @@ endif()
 # macOS bundle settings
 if(APPLE)
     option(FRAMELIT_RUN_MACDEPLOYQT "Run macdeployqt after build" ON)
-    set(FRAMELIT_CODESIGN_IDENTITY "ED7BA643A218B65A4A1068D40A77E73EFA30ED56" CACHE STRING "Developer ID signing identity for Framelit.app")
+    # Signing identity: override with -DFRAMELIT_CODESIGN_IDENTITY=... or the
+    # FRAMELIT_CODESIGN_IDENTITY environment variable (CI). Use "-" for ad-hoc.
+    if(DEFINED ENV{FRAMELIT_CODESIGN_IDENTITY})
+        set(_default_codesign_identity "$ENV{FRAMELIT_CODESIGN_IDENTITY}")
+    else()
+        set(_default_codesign_identity "-")
+    endif()
+    set(FRAMELIT_CODESIGN_IDENTITY "${_default_codesign_identity}" CACHE STRING "Developer ID signing identity for Framelit.app (\"-\" = ad-hoc)")
 
     get_target_property(_qt_qmake_location Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(_qt_bin_dir "${_qt_qmake_location}" DIRECTORY)
@@ -308,3 +315,18 @@ target_link_libraries(mouse_panner_test PRIVATE
 )
 
 add_test(NAME MousePannerTest COMMAND mouse_panner_test)
+
+qt_add_executable(crop_geometry_test
+    tests/crop_geometry_test.cpp
+)
+
+target_include_directories(crop_geometry_test PRIVATE src)
+
+target_link_libraries(crop_geometry_test PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Test
+)
+
+add_test(NAME CropGeometryTest COMMAND crop_geometry_test)

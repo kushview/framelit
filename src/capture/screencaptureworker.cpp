@@ -1,7 +1,9 @@
 #include "screencaptureworker.hpp"
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QScreen>
+#include <QThread>
 #include <QTimer>
 
 #ifdef Q_OS_MACOS
@@ -19,6 +21,11 @@ ScreenCaptureWorker::ScreenCaptureWorker(const CaptureRegion& region,
     : RecorderWorker(region, settings, parent)
     , m_frameIntervalMs(1000 / qMax(1, settings.fps))
 {
+    // Must be constructed on the main thread: setExcludedWindowIds below reaches
+    // through NSView → NSWindow on macOS, which is main-thread-only. AppController
+    // moveToThread()s us afterwards.
+    Q_ASSERT(QThread::currentThread() == qApp->thread());
+
     // Create the platform backend as a child so it moves to the worker thread
     // automatically when AppController calls moveToThread on this object.
 #ifdef Q_OS_MACOS
@@ -40,6 +47,10 @@ ScreenCaptureWorker::~ScreenCaptureWorker() = default;
 
 void ScreenCaptureWorker::start()
 {
+    // Invoked via queued connection after moveToThread — must run on the worker
+    // thread, never the main thread (the backend drives capture from here).
+    Q_ASSERT(QThread::currentThread() == thread());
+
     if (m_running)
         return;
 
@@ -85,6 +96,8 @@ void ScreenCaptureWorker::start()
 
 void ScreenCaptureWorker::stop()
 {
+    Q_ASSERT(QThread::currentThread() == thread()); // worker thread only
+
     if (!m_running)
         return;
 

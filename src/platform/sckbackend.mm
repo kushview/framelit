@@ -17,7 +17,7 @@
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 
 #include "sckbackend.hpp"
-#include "macos_window.h"
+#include "macos_window.hpp"
 
 #include <QDebug>
 #include <QMetaObject>

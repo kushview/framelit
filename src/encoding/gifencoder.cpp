@@ -1,4 +1,5 @@
 #include "gifencoder.hpp"
+#include "../capture/cropgeometry.hpp"
 #include "../capture/framestore.hpp"
 #include "../imageutil.hpp"
 
@@ -35,45 +36,14 @@ void GifEncoder::encode()
     // How many source frames to skip between output frames.
     // e.g. recorded at 30fps, output at 10fps → keep every 3rd frame.
     const int stride = qMax(1, m_recordingFps / qMax(1, m_gifSettings.outputFps));
-    // GIF delay is in centiseconds.
-    const int delayCentisec = qMax(1, 100 / qMax(1, m_gifSettings.outputFps));
+    // GIF delay is in centiseconds. Compute in floating point before rounding
+    // so high output rates (>50 fps) don't collapse to the same integer delay.
+    const int delayCentisec =
+        qMax(1, qRound(100.0 / qMax(1, m_gifSettings.outputFps)));
 
     // Open output file.
     int gifError = GIF_OK;
     const QByteArray pathBytes = m_outputPath.toUtf8();
-
-    // Helper: compute physical crop rect for a given tagged frame.
-    // CaptureRegion.rect is in logical pixels, global screen coordinates.
-    // QScreenCapture gives us the full screen in physical pixels, so we:
-    //   1. Make the rect relative to the screen's top-left
-    //   2. Scale by devicePixelRatio to get physical pixel coordinates
-    //   3. Clamp to the actual image bounds
-    auto computeCropRect = [](const TaggedFrame& tf, const QImage& img) -> QRect {
-        const CaptureRegion& region = tf.region;
-        const QRect screenLogical = region.screen
-            ? region.screen->geometry()
-            : QRect(0, 0, img.width(), img.height());
-
-        // Compute the actual scale factor from measured frame vs. logical screen
-        // dimensions. The backend may deliver frames at logical (1x) or physical
-        // (dpr x) resolution depending on the SCK config — don't assume.
-        const qreal scaleX = screenLogical.width()  > 0
-            ? (qreal)img.width()  / screenLogical.width()  : 1.0;
-        const qreal scaleY = screenLogical.height() > 0
-            ? (qreal)img.height() / screenLogical.height() : 1.0;
-
-        QRect localLogical = region.rect.translated(-screenLogical.topLeft());
-        QRect scaled(
-            qRound(localLogical.x()      * scaleX),
-            qRound(localLogical.y()      * scaleY),
-            qRound(localLogical.width()  * scaleX),
-            qRound(localLogical.height() * scaleY)
-        );
-        scaled = scaled.intersected(QRect(0, 0, img.width(), img.height()));
-        if (scaled.isEmpty())
-            scaled = QRect(0, 0, img.width(), img.height());
-        return scaled;
-    };
 
     const int outW = qMax(1, m_gifSettings.outputSize.width());
     const int outH = qMax(1, m_gifSettings.outputSize.height());
@@ -124,7 +94,7 @@ void GifEncoder::encode()
             continue;
 
         // Crop using this frame's own region — handles a moving capture window.
-        img = img.copy(computeCropRect(tf, img));
+        img = img.copy(physicalCropRect(tf.region, img.size()));
 
         // Scale to output dimensions if needed.
         img = scaleImage(img, QSize(outW, outH), m_gifSettings.letterbox);

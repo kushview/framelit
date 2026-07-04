@@ -1,5 +1,6 @@
 #include "controlbar.hpp"
 #include "capturewindow.hpp"
+#include "uigeometry.hpp"
 
 #include <QApplication>
 #include <QAudioDevice>
@@ -16,7 +17,7 @@
 
 #include "../platform/windowhelpers.hpp"
 #ifdef Q_OS_MACOS
-#include "../platform/macos_window.h"
+#include "../platform/macos_window.hpp"
 #endif
 
 namespace sc {
@@ -396,7 +397,7 @@ void ControlBar::mouseMoveEvent(QMouseEvent* event)
         // from width so the zoom stays proportional.
         double aspect = m_captureWindow->lockedAspect();
         if (aspect > 0.0)
-            newH = qMax(CaptureWindow::kMinDimension, int(newW / aspect));
+            newH = heightForAspect(newW, aspect, CaptureWindow::kMinDimension);
 
         r.setWidth(newW);
         r.setHeight(newH);

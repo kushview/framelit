@@ -7,8 +7,9 @@
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
-    app.setApplicationName("ScreenCapture");
-    app.setOrganizationName("sc");
+    app.setApplicationName("Framelit");
+    app.setOrganizationName("Kushview");
+    app.setOrganizationDomain("kushview.net");
     app.setQuitOnLastWindowClosed(false); // windows are tools; closing one shouldn't quit
 
     // Set Fusion style for cross-platform consistency

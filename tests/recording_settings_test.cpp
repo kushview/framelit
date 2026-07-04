@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QDir>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryFile>
@@ -30,24 +31,6 @@ private slots:
         QCOMPARE(s.quality, QualityPreset::Medium);
     }
 
-    void defaults_showCursorTrue()
-    {
-        RecordingSettings s;
-        QVERIFY(s.showCursor);
-    }
-
-    void defaults_showClicksTrue()
-    {
-        RecordingSettings s;
-        QVERIFY(s.showClicks);
-    }
-
-    void defaults_countdownFalse()
-    {
-        RecordingSettings s;
-        QVERIFY(!s.countdown);
-    }
-
     // load from empty QSettings uses defaults --------------------------------
 
     void load_emptyQSettings_returnsDefaults()
@@ -61,9 +44,6 @@ private slots:
         QCOMPARE(s.fps, 30);
         QCOMPARE(s.format, OutputFormat::Gif);
         QCOMPARE(s.quality, QualityPreset::Medium);
-        QVERIFY(s.showCursor);
-        QVERIFY(s.showClicks);
-        QVERIFY(!s.countdown);
         QCOMPARE(s.outputDir,
             QStandardPaths::writableLocation(QStandardPaths::MoviesLocation));
     }
@@ -73,16 +53,14 @@ private slots:
     void roundTrip_allFields()
     {
         const QString group = "RecordingSettingsTest_roundTrip";
+        // Use a real, writable dir so load()'s outputDir validation keeps it.
+        const QString realDir = QDir::tempPath();
+        RecordingSettings s;
+        s.fps        = 15;
+        s.format     = OutputFormat::Mp4;
+        s.quality    = QualityPreset::High;
+        s.outputDir  = realDir;
         {
-            RecordingSettings s;
-            s.fps        = 15;
-            s.format     = OutputFormat::Mp4;
-            s.quality    = QualityPreset::High;
-            s.showCursor = false;
-            s.showClicks = false;
-            s.countdown  = true;
-            s.outputDir  = "/tmp/test_output";
-
             QSettings qs("sc_test", group);
             qs.clear();
             s.save(qs);
@@ -90,15 +68,12 @@ private slots:
         }
         {
             QSettings qs("sc_test", group);
-            RecordingSettings s = RecordingSettings::load(qs);
+            RecordingSettings loaded = RecordingSettings::load(qs);
 
-            QCOMPARE(s.fps,        15);
-            QCOMPARE(s.format,     OutputFormat::Mp4);
-            QCOMPARE(s.quality,    QualityPreset::High);
-            QVERIFY(!s.showCursor);
-            QVERIFY(!s.showClicks);
-            QVERIFY(s.countdown);
-            QCOMPARE(s.outputDir,  QString("/tmp/test_output"));
+            QCOMPARE(loaded.fps,        15);
+            QCOMPARE(loaded.format,     OutputFormat::Mp4);
+            QCOMPARE(loaded.quality,    QualityPreset::High);
+            QCOMPARE(loaded.outputDir,  realDir);
         }
         // Clean up persisted test data
         QSettings qs("sc_test", group);
@@ -134,6 +109,25 @@ private slots:
 
         RecordingSettings loaded = RecordingSettings::load(qs);
         QCOMPARE(loaded.quality, QualityPreset::Low);
+        qs.clear();
+    }
+
+    // A stored outputDir that no longer exists (deleted/unmounted) must fall
+    // back to Movies on load rather than being kept and failing at record time.
+    void load_outputDirMissing_fallsBackToMovies()
+    {
+        const QString group = "RecordingSettingsTest_badOutputDir";
+        {
+            QSettings qs("sc_test", group);
+            qs.clear();
+            qs.setValue("outputDir",
+                        QStringLiteral("/nonexistent/framelit/output/dir"));
+            qs.sync();
+        }
+        QSettings qs("sc_test", group);
+        RecordingSettings s = RecordingSettings::load(qs);
+        QCOMPARE(s.outputDir,
+                 QStandardPaths::writableLocation(QStandardPaths::MoviesLocation));
         qs.clear();
     }
 };

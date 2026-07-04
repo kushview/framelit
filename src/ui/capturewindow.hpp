@@ -60,10 +60,9 @@ private:
     AppState m_state          = AppState::Idle;
     bool     m_flashActive    = false;
 
-    // When true, resizeEvent/moveEvent will not re-emit regionChanged.
-    // Set while applying a programmatic geometry change from AppController
-    // to avoid a signal feedback loop.
-    bool m_suppressSignal = false;
+    // Programmatic geometry changes from AppController are applied under a
+    // QSignalBlocker (see onRegionChanged) so resizeEvent/moveEvent don't
+    // re-emit regionChanged and form a feedback loop — no manual guard flag.
 
     // When recording, resize is constrained to the aspect ratio captured at
     // record-start, creating a zoom effect. 0.0 = unlocked (not recording).

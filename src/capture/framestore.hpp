@@ -35,7 +35,13 @@ public:
     explicit FrameStore(QObject* parent = nullptr);
 
     // Thread-safe. Called by the capture worker on every kept frame.
+    // Frames are dropped once the byte budget (see setMaxBytes) is exceeded, so
+    // an over-long buffered recording truncates instead of exhausting RAM.
     void addFrame(const QImage& image, const CaptureRegion& region);
+
+    // Byte budget for buffered frames. Default ≈ 1.5 GiB. Frames beyond it are
+    // dropped and bufferLimitReached() fires once. 0 = unlimited.
+    void setMaxBytes(qint64 maxBytes);
 
     // Safe to call from any thread once recording has stopped.
     int frameCount() const;
@@ -50,14 +56,23 @@ public:
     int totalAdded() const;
 
 signals:
-    // Emitted on every addFrame() call. Carries the running frame count.
+    // Emitted on every kept addFrame() call. Carries the running frame count.
     // Connected to AppController::onFrameBuffered for UI progress updates.
     void frameBuffered(int totalCount);
 
+    // Emitted exactly once, the first time a frame is dropped because the byte
+    // budget was exceeded. Lets the UI warn that the recording was truncated.
+    void bufferLimitReached();
+
 private:
+    static constexpr qint64 kDefaultMaxBytes = qint64(1536) * 1024 * 1024; // ~1.5 GiB
+
     mutable QMutex       m_mutex;
     QVector<TaggedFrame> m_frames;
     int                  m_totalAdded    = 0;
+    qint64               m_currentBytes  = 0;
+    qint64               m_maxBytes      = kDefaultMaxBytes;
+    bool                 m_limitReached  = false;
     QThread*             m_producerThread = nullptr;  // set on first addFrame(); used for assertions
 };
 

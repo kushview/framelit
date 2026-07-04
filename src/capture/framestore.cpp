@@ -11,17 +11,38 @@ FrameStore::FrameStore(QObject* parent)
 void FrameStore::addFrame(const QImage& image, const CaptureRegion& region)
 {
     int count;
+    bool justHitLimit = false;
     {
         QMutexLocker lock(&m_mutex);
         // Record the producer thread on first call so subsequent assertions can check it.
         if (!m_producerThread)
             m_producerThread = QThread::currentThread();
         Q_ASSERT(QThread::currentThread() == m_producerThread);
-        m_frames.append(TaggedFrame{ image, region });
-        m_totalAdded++;
+
+        // Enforce the byte budget: drop frames once exceeded so a runaway
+        // recording truncates rather than exhausting RAM.
+        const qint64 frameBytes = image.sizeInBytes();
+        if (m_maxBytes > 0 && m_currentBytes + frameBytes > m_maxBytes) {
+            justHitLimit = !m_limitReached;
+            m_limitReached = true;
+        } else {
+            m_frames.append(TaggedFrame{ image, region });
+            m_currentBytes += frameBytes;
+            m_totalAdded++;
+        }
         count = m_totalAdded;
     }
-    emit frameBuffered(count);
+
+    if (justHitLimit)
+        emit bufferLimitReached();
+    else
+        emit frameBuffered(count);
+}
+
+void FrameStore::setMaxBytes(qint64 maxBytes)
+{
+    QMutexLocker lock(&m_mutex);
+    m_maxBytes = maxBytes;
 }
 
 int FrameStore::frameCount() const
@@ -45,6 +66,8 @@ void FrameStore::clear()
     QMutexLocker lock(&m_mutex);
     m_frames.clear();
     m_totalAdded = 0;
+    m_currentBytes = 0;
+    m_limitReached = false;
     m_producerThread = nullptr;  // reset so the next recording session can re-bind
 }
 

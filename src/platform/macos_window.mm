@@ -1,4 +1,4 @@
-#include "macos_window.h"
+#include "macos_window.hpp"
 
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>

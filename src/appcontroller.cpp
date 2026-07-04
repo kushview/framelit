@@ -13,11 +13,12 @@
 #include "ui/editwindow.hpp"
 #include "ui/mainmenu.hpp"
 #include "ui/preferencesdialog.hpp"
+#include "ui/uigeometry.hpp"
 
 #include <QCursor>
 
 #ifdef Q_OS_MAC
-#  include "platform/macos_window.h"
+#  include "platform/macos_window.hpp"
 #  include "globalhotkeys.hpp"
 #endif
 
@@ -376,8 +377,18 @@ void AppController::onResumeRequested()
 void AppController::onRegionChanged(const QRect& rect)
 {
     m_region.rect = rect;
-    if (!m_region.screen)
-        m_region.screen = QGuiApplication::primaryScreen();
+
+    // Snap onto the screen the region now sits on, and clamp so it can never be
+    // dragged (partly) off-screen — an off-screen region silently breaks the
+    // capture crop. The re-emitted regionChanged pushes the clamped rect back
+    // to the CaptureWindow.
+    QScreen* screen = QGuiApplication::screenAt(rect.center());
+    if (!screen)
+        screen = m_region.screen ? m_region.screen
+                                 : QGuiApplication::primaryScreen();
+    m_region.screen = screen;
+    if (screen)
+        m_region = m_region.clampedTo(screen->geometry());
 
     // If the user dragged the window (not a hotkey resize), clear the latched
     // aspect so the next hotkey press re-latches from the new shape.
@@ -387,7 +398,7 @@ void AppController::onRegionChanged(const QRect& rect)
     emit regionChanged(m_region);
 
     if (m_controlBar)
-        m_controlBar->snapToRegion(rect);
+        m_controlBar->snapToRegion(m_region.rect);
 
     // Keep the worker's region current so it captures the new position live.
     if (m_worker)
@@ -605,7 +616,7 @@ void AppController::onSnapAspectRequested()
     if (aspect <= 0.0)
         return;
 
-    r.setHeight(qMax(CaptureWindow::kMinDimension, qRound(r.width() / aspect)));
+    r.setHeight(heightForAspect(r.width(), aspect, CaptureWindow::kMinDimension));
     onRegionChanged(r);
 }
 
@@ -725,7 +736,7 @@ void AppController::applyResizeDelta(int delta)
         m_resizeAspect = double(r.width()) / r.height();
 
     const int newW = qMax(CaptureWindow::kMinDimension, r.width() + delta);
-    const int newH = qMax(CaptureWindow::kMinDimension, qRound(newW / m_resizeAspect));
+    const int newH = heightForAspect(newW, m_resizeAspect, CaptureWindow::kMinDimension);
 
     const QPoint center = r.center();
     r.setWidth(newW);
@@ -810,7 +821,7 @@ void AppController::onRecordToggleRequested()
 {
     if (m_state == AppState::Recording || m_state == AppState::Paused)
         onStopRequested();
-    else if (m_state == AppState::Idle || m_state == AppState::Positioning || m_state == AppState::Preview) {
+    else if (m_state == AppState::Idle || m_state == AppState::Preview) {
         const bool uiVisible = m_captureWindow && m_captureWindow->isVisible();
         if (!uiVisible)
             centerCaptureRegionAroundCursor();
@@ -982,7 +993,7 @@ void AppController::applySettingsToUI()
 
 void AppController::loadSettings()
 {
-    QSettings qs("sc", "ScreenCapture");
+    QSettings qs; // uses app-wide identity set in main() (Kushview / Framelit)
     m_settings = RecordingSettings::load(qs);
 
     // UI exposes GIF/MP4 only. Migrate any legacy WebM setting to MP4 so
@@ -997,7 +1008,7 @@ void AppController::loadSettings()
 
 void AppController::saveSettings()
 {
-    QSettings qs("sc", "ScreenCapture");
+    QSettings qs; // uses app-wide identity set in main() (Kushview / Framelit)
     m_settings.save(qs);
     qs.setValue("captureRect", m_region.rect);
 }

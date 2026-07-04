@@ -1,7 +1,7 @@
 #include "windowhelpers.hpp"
 
 #ifdef Q_OS_MACOS
-#include "macos_window.h"
+#include "macos_window.hpp"
 #endif
 #ifdef Q_OS_WIN
 #include <windows.h>

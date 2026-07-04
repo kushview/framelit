@@ -4,6 +4,7 @@
 #include "capture/framestore.hpp"
 
 #include <QThread>
+#include <QTimer>
 
 namespace sc {
 
@@ -29,8 +30,14 @@ public:
     void finish() override;
 
 private:
-    FrameStore* m_frameStore    = nullptr;
-    QThread*    m_encoderThread = nullptr;
+    // Single cleanup path for the encoder thread — called from the finished /
+    // failed / timeout handlers and the destructor. Idempotent and null-guarded
+    // so the destructor can't race a signal into a double quit()/wait().
+    void stopEncoderThread();
+
+    FrameStore* m_frameStore     = nullptr;
+    QThread*    m_encoderThread  = nullptr;
+    QTimer*     m_watchdog       = nullptr; // fails the encode if it never finishes
 };
 
 } // namespace sc
