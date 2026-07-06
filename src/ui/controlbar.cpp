@@ -6,6 +6,7 @@
 #include <QAudioDevice>
 #include <QComboBox>
 #include <QDebug>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMediaDevices>
@@ -35,12 +36,10 @@ ControlBar::ControlBar(CaptureWindow* captureWindow, QWidget* parent)
 
     setFixedHeight(kBarHeight);
 
-    // Dark background via stylesheet
-    setStyleSheet("QWidget { background-color: #1e2029; color: #e2e8f0; }"
-                  "QPushButton { padding: 2px 10px; border-radius: 3px; background-color: #334155; color: #e2e8f0; }"
-                  "QPushButton:hover { background-color: #475569; }"
-                  "QPushButton#recordBtn { background-color: #dc2626; }"
-                  "QPushButton#recordBtn:hover { background-color: #ef4444; }");
+    // Styling lives in :/controlbar.qss (scoped to this bar and its children).
+    QFile qss(":/controlbar.qss");
+    if (qss.open(QFile::ReadOnly))
+        setStyleSheet(QString::fromUtf8(qss.readAll()));
 
     buildUi();
 
@@ -67,10 +66,8 @@ void ControlBar::buildUi()
     layout->addStretch();
 
     m_formatButton = new QPushButton("GIF", this);
+    m_formatButton->setObjectName("formatBtn");
     m_formatButton->setToolTip("Toggle output format: GIF or MP4");
-    m_formatButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 8px; background: transparent; }"
-        "QPushButton:hover { border-color: #64748b; color: #e2e8f0; }");
     connect(m_formatButton, &QPushButton::clicked, this, [this]() {
         if (m_state != AppState::Idle)
             return;
@@ -83,14 +80,11 @@ void ControlBar::buildUi()
     layout->addWidget(m_formatButton);
 
     m_audioButton = new QPushButton("🎙", this);
+    m_audioButton->setObjectName("audioBtn");
     m_audioButton->setCheckable(true);
     m_audioButton->setChecked(false);
     m_audioButton->setToolTip("Toggle microphone audio recording");
     m_audioButton->setVisible(false); // hidden when GIF is selected
-    m_audioButton->setStyleSheet(
-        "QPushButton { color: #64748b; border: 1px solid #334155; border-radius: 3px; padding: 2px 6px; background: transparent; }"
-        "QPushButton:checked { color: #e2e8f0; border-color: #60a5fa; }"
-        "QPushButton:hover { border-color: #64748b; }");
     connect(m_audioButton, &QPushButton::toggled, this, [this](bool on) {
         m_captureAudio = on;
         emit audioChangeRequested(on);
@@ -119,13 +113,10 @@ void ControlBar::buildUi()
     layout->addWidget(m_stopButton);
 
     m_hiDpiButton = new QPushButton("2×", this);
+    m_hiDpiButton->setObjectName("hiDpiBtn");
     m_hiDpiButton->setCheckable(true);
     m_hiDpiButton->setChecked(false);
     m_hiDpiButton->setToolTip("HiDPI: output at 1600×900 instead of 800×450");
-    m_hiDpiButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 6px; background: transparent; font-size: 11px; }"
-        "QPushButton:checked { color: #e2e8f0; border-color: #60a5fa; }"
-        "QPushButton:hover { border-color: #64748b; }");
     connect(m_hiDpiButton, &QPushButton::toggled, this, [this](bool on) {
         m_hiDpi = on;
         emit hiDpiChangeRequested(on);
@@ -133,13 +124,10 @@ void ControlBar::buildUi()
     layout->addWidget(m_hiDpiButton);
 
     m_followMouseButton = new QPushButton("⊕", this);
+    m_followMouseButton->setObjectName("followBtn");
     m_followMouseButton->setCheckable(true);
     m_followMouseButton->setChecked(false);
     m_followMouseButton->setToolTip("Follow mouse: pan capture region when cursor nears an edge");
-    m_followMouseButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px; padding: 2px 6px; background: transparent; font-size: 11px; }"
-        "QPushButton:checked { color: #e2e8f0; border-color: #60a5fa; }"
-        "QPushButton:hover { border-color: #64748b; }");
     connect(m_followMouseButton, &QPushButton::toggled, this, [this](bool on) {
         m_followMouse = on;
         emit followMouseChangeRequested(on);
@@ -147,47 +135,35 @@ void ControlBar::buildUi()
     layout->addWidget(m_followMouseButton);
 
     m_snapButton = new QPushButton("Snap", this);
+    m_snapButton->setObjectName("snapBtn");
     m_snapButton->setToolTip("Snap capture region to the output aspect ratio");
-    m_snapButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
-        " padding: 2px 6px; background: transparent; font-size: 11px; }"
-        "QPushButton:hover { border-color: #64748b; color: #e2e8f0; }"
-        "QPushButton:disabled { color: #475569; }");
     connect(m_snapButton, &QPushButton::clicked, this, &ControlBar::snapAspectRequested);
     layout->addWidget(m_snapButton);
 
     m_previewButton = new QPushButton("□", this);
+    m_previewButton->setObjectName("previewBtn");
     m_previewButton->setCheckable(true);
     m_previewButton->setChecked(false);
     m_previewButton->setFixedSize(28, 22);
     m_previewButton->setToolTip("Show or hide preview");
-    m_previewButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
-        " padding: 0; background: transparent; font-size: 12px; }"
-        "QPushButton:checked { color: #e2e8f0; border-color: #60a5fa; background: #1e293b; }"
-        "QPushButton:hover { border-color: #64748b; }");
     connect(m_previewButton, &QPushButton::toggled, this, [this](bool show) {
         emit previewToggleRequested(show);
     });
     layout->addWidget(m_previewButton);
 
     m_settingsButton = new QPushButton("⚙", this);
+    m_settingsButton->setObjectName("settingsBtn");
     m_settingsButton->setFixedSize(28, 22);
     m_settingsButton->setToolTip("Preferences");
-    m_settingsButton->setStyleSheet(
-        "QPushButton { color: #94a3b8; border: 1px solid #334155; border-radius: 3px;"
-        " background: transparent; font-size: 13px; }"
-        "QPushButton:hover { color: #e2e8f0; border-color: #64748b; }"
-        "QPushButton:disabled { color: #475569; }");
     connect(m_settingsButton, &QPushButton::clicked, this, &ControlBar::preferencesRequested);
     layout->addWidget(m_settingsButton);
 
     // Resize grip — a small visual indicator at the right edge of the bar.
     // Hit zone is kGripSize px wide; cursor changes on hover.
     auto* grip = new QLabel("⊿", this);
+    grip->setObjectName("gripLabel");
     grip->setFixedWidth(kGripSize);
     grip->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    grip->setStyleSheet(QString("color: #475569; font-size: %1px;").arg(kBarHeight - 10));
     grip->setCursor(Qt::SizeFDiagCursor);
     grip->setAttribute(Qt::WA_TransparentForMouseEvents); // bar handles the events
     layout->addWidget(grip);
@@ -366,15 +342,12 @@ bool ControlBar::isInGripZone(const QPoint& localPos) const
 void ControlBar::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton && m_captureWindow) {
-        if (isInGripZone(event->pos())) {
-            m_resizing          = true;
-            m_dragStart         = event->globalPosition().toPoint();
-            m_captureRectAtPress = m_captureWindow->geometry();
-        } else {
-            m_dragging      = true;
-            m_dragStart     = event->globalPosition().toPoint();
-            m_captureOrigin = m_captureWindow->pos();
-        }
+        m_dragStart          = event->globalPosition().toPoint();
+        m_captureRectAtPress = m_captureWindow->geometry();
+        if (isInGripZone(event->pos()))
+            m_resizing = true;
+        else
+            m_dragging = true;
     }
     QWidget::mousePressEvent(event);
 }
@@ -401,10 +374,12 @@ void ControlBar::mouseMoveEvent(QMouseEvent* event)
 
         r.setWidth(newW);
         r.setHeight(newH);
-        m_captureWindow->setGeometry(r);
+        // Emit intent; the controller applies it (clamped) and the capture
+        // window follows via regionChanged — the bar never writes geometry.
+        emit captureRectChangeRequested(r);
     } else if (m_dragging) {
         QPoint delta = event->globalPosition().toPoint() - m_dragStart;
-        m_captureWindow->move(m_captureOrigin + delta);
+        emit captureRectChangeRequested(m_captureRectAtPress.translated(delta));
     } else {
         // Cursor feedback on hover
         setCursor(isInGripZone(event->pos()) ? Qt::SizeFDiagCursor

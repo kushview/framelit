@@ -1,9 +1,5 @@
 #include "appcontroller.hpp"
-#include "recorderworker.hpp"
-#include "capture/screencaptureworker.hpp"
-#include "recordingstrategy.hpp"
-#include "bufferedstrategy.hpp"
-#include "streamingstrategy.hpp"
+#include "workermanager.hpp"
 #include "mousepanner.hpp"
 #include "outputpath.hpp"
 #include "ui/capturewindow.hpp"
@@ -83,7 +79,10 @@ AppController::AppController(QObject* parent)
 
 AppController::~AppController()
 {
-    teardownWorker();
+    // Delete the WorkerManager first so its thread is quit()+wait()'d before
+    // the rest of the app tears down.
+    delete m_workerManager;
+    m_workerManager = nullptr;
     delete m_editWindow;
     m_editWindow = nullptr;
     saveSettings();
@@ -108,6 +107,22 @@ void AppController::start()
     m_centerHandle  = new CenterHandle();
     m_closeButton   = new CloseButton();
     m_controlBar    = new ControlBar(m_captureWindow);
+
+    // Recording pipeline (worker + strategy + threads). It reports lifecycle
+    // back via signals; AppController maps them to state transitions / UI.
+    m_workerManager = new WorkerManager(this);
+    connect(m_workerManager, &WorkerManager::progress,
+            this, &AppController::onProgressUpdated);
+    connect(m_workerManager, &WorkerManager::processingStarted,
+            this, [this]() { setState(AppState::Processing); });
+    connect(m_workerManager, &WorkerManager::encodingProgress,
+            this, &AppController::onEncodingProgress);
+    connect(m_workerManager, &WorkerManager::encodingFinished,
+            this, &AppController::onEncodingFinished);
+    connect(m_workerManager, &WorkerManager::encodingFailed,
+            this, &AppController::onEncodingFailed);
+    connect(m_workerManager, &WorkerManager::captureError,
+            this, &AppController::onCaptureError);
 
     m_actions = new Actions(this);
     connect(m_actions, &Actions::recordRequested,             this, &AppController::onStartRequested);
@@ -150,6 +165,7 @@ void AppController::start()
     connect(m_controlBar, &ControlBar::followMouseChangeRequested, this, &AppController::onFollowMouseChangeRequested);
     connect(m_controlBar, &ControlBar::letterboxChangeRequested,    this, &AppController::onLetterboxChangeRequested);
     connect(m_controlBar, &ControlBar::snapAspectRequested,        this, &AppController::onSnapAspectRequested);
+    connect(m_controlBar, &ControlBar::captureRectChangeRequested, this, &AppController::onRegionChanged);
     connect(m_controlBar, &ControlBar::previewToggleRequested,      this, &AppController::onPreviewToggleRequested);
     connect(m_controlBar, &ControlBar::preferencesRequested,       this, &AppController::onPreferencesRequested);
 
@@ -306,52 +322,24 @@ void AppController::onStartRequested()
         m_editWindow->hide();
     m_previewVisible = false;
 
-    // Create strategy before the worker so it's ready to receive frames.
-    if (m_settings.format == OutputFormat::Gif)
-        m_strategy = new BufferedStrategy(m_settings, this);
-    else
-        m_strategy = new StreamingStrategy(m_settings, this);
-    connect(m_strategy, &RecordingStrategy::encodingProgress,
-            this, &AppController::onEncodingProgress);
-    connect(m_strategy, &RecordingStrategy::encodingFinished,
-            this, &AppController::onEncodingFinished);
-    connect(m_strategy, &RecordingStrategy::encodingFailed,
-            this, &AppController::onEncodingFailed);
-
     // Always exclude our own windows from the SCK content filter so they never
     // appear in the captured frames. Demo mode only controls NSWindowSharingType
     // (visibility to *external* recorders) — it is orthogonal to this list.
-    auto* worker = new ScreenCaptureWorker(m_region, m_settings, {
+    m_workerManager->start(m_region, m_settings, {
         m_captureWindow ? m_captureWindow->winId() : WId{0},
         m_centerHandle  ? m_centerHandle->winId()  : WId{0},
         m_controlBar    ? m_controlBar->winId()    : WId{0},
     });
-    attachWorker(worker);
-
-    // Route captured frames to the strategy.
-    // Store the connection so we can disconnect it before tearing down the
-    // strategy — queued frames must not fire against a deleted object.
-    m_frameConn = connect(worker, &RecorderWorker::frameReady,
-            this, [this](const QImage& image, const sc::CaptureRegion& region) {
-                if (m_strategy)
-                    m_strategy->onFrame(image, region);
-            },
-            Qt::QueuedConnection);
-
-    connect(worker, &RecorderWorker::errorOccurred,
-            this,   &AppController::onCaptureError,
-            Qt::QueuedConnection);
 
     setState(AppState::Recording);
-    QMetaObject::invokeMethod(m_worker, "start", Qt::QueuedConnection);
 }
 
 void AppController::onStopRequested()
 {
     if (m_state != AppState::Recording && m_state != AppState::Paused)
         return;
-    if (m_worker)
-        QMetaObject::invokeMethod(m_worker, "stop", Qt::QueuedConnection);
+    if (m_workerManager->isActive())
+        m_workerManager->stop();
     else
         setState(AppState::Idle); // no worker yet — stub path
 }
@@ -361,8 +349,7 @@ void AppController::onPauseRequested()
     if (m_state != AppState::Recording)
         return;
     setState(AppState::Paused);
-    if (m_worker)
-        QMetaObject::invokeMethod(m_worker, "pause", Qt::QueuedConnection);
+    m_workerManager->pause();
 }
 
 void AppController::onResumeRequested()
@@ -370,8 +357,7 @@ void AppController::onResumeRequested()
     if (m_state != AppState::Paused)
         return;
     setState(AppState::Recording);
-    if (m_worker)
-        QMetaObject::invokeMethod(m_worker, "resume", Qt::QueuedConnection);
+    m_workerManager->resume();
 }
 
 void AppController::onRegionChanged(const QRect& rect)
@@ -401,18 +387,7 @@ void AppController::onRegionChanged(const QRect& rect)
         m_controlBar->snapToRegion(m_region.rect);
 
     // Keep the worker's region current so it captures the new position live.
-    if (m_worker)
-        m_worker->setCaptureRegion(m_region);
-}
-
-void AppController::onRecordingFinished()
-{
-    setState(AppState::Processing);
-
-    if (m_strategy)
-        m_strategy->finish();
-    else
-        setState(AppState::Idle);
+    m_workerManager->setCaptureRegion(m_region);
 }
 
 void AppController::onProgressUpdated(qint64 elapsedMs)
@@ -440,13 +415,6 @@ void AppController::onEncodingProgress(float fraction)
 void AppController::onEncodingFinished(const QString& filePath)
 {
     qDebug() << "Output saved:" << filePath;
-    // Disconnect frame delivery first — queued frames must not fire against
-    // a strategy that has been marked for deletion.
-    disconnect(m_frameConn);
-    if (m_strategy) {
-        m_strategy->deleteLater();
-        m_strategy = nullptr;
-    }
     m_lastOutputPath = filePath;
     if (m_editWindow && m_editWindow->isVisible()) {
         m_editWindow->setOutputDir(m_settings.outputDir);
@@ -460,11 +428,6 @@ void AppController::onEncodingFinished(const QString& filePath)
 void AppController::onEncodingFailed(const QString& reason)
 {
     qWarning() << "Encoding failed:" << reason;
-    disconnect(m_frameConn);
-    if (m_strategy) {
-        m_strategy->deleteLater();
-        m_strategy = nullptr;
-    }
     QMessageBox::critical(
         m_controlBar,
         QStringLiteral("Encoding Error"),
@@ -922,51 +885,9 @@ void AppController::onFollowMouseTick()
 
     m_region.rect = newRect;
     emit regionChanged(m_region);
-    if (m_worker)
-        m_worker->setCaptureRegion(m_region);
+    m_workerManager->setCaptureRegion(m_region);
 }
 
-void AppController::attachWorker(RecorderWorker* worker)
-{
-    teardownWorker();
-
-    m_worker       = worker;
-    m_workerThread = new QThread(this);
-    m_worker->moveToThread(m_workerThread);
-
-    // Worker → controller
-    connect(m_worker, &RecorderWorker::recordingFinished,
-            this,     &AppController::onRecordingFinished,
-            Qt::QueuedConnection);
-    connect(m_worker, &RecorderWorker::progressUpdated,
-            this,     &AppController::onProgressUpdated,
-            Qt::QueuedConnection);
-
-    // Clean up the thread when the worker is done.
-    // Also null our pointers immediately so they're never dangling.
-    connect(m_workerThread, &QThread::finished, this, [this]() {
-        m_worker       = nullptr;
-        m_workerThread = nullptr;
-    }, Qt::QueuedConnection);
-    connect(m_worker, &RecorderWorker::recordingFinished,
-            m_workerThread, &QThread::quit,
-            Qt::QueuedConnection);
-    connect(m_workerThread, &QThread::finished,
-            m_worker, &QObject::deleteLater);
-
-    m_workerThread->start();
-}
-
-void AppController::teardownWorker()
-{
-    if (!m_workerThread)
-        return;
-    m_workerThread->quit();
-    m_workerThread->wait();
-    // m_worker deleted by deleteLater connection above
-    m_worker       = nullptr;
-    m_workerThread = nullptr;
-}
 // ---------------------------------------------------------------------------
 
 void AppController::setState(AppState s)

@@ -26,30 +26,26 @@ Status tags: **[OPEN]**, **[FIXED]**, **[DEFERRED]**.
 | `macos_window.h` extension | renamed → `.hpp` | Updated 7 includes + CMake. |
 | Dimension label (was "permanently hidden") | `ui/capturewindow.cpp` | Already resolved — `m_statusItem`/`m_dimsItem` are live. |
 | MousePanner sentinel | `mousepanner.hpp` | Already documented (`<0 = unlimited`). |
+| AppController God Class | `workermanager.{hpp,cpp}` (new) | Extracted `WorkerManager` — owns the worker QThread, strategy, frame routing, and the disconnect-before-`deleteLater` dance. AppController keeps only state/UI policy and maps lifecycle signals. |
+| ControlBar mutated CaptureWindow | `ui/controlbar.{hpp,cpp}`, `appcontroller.cpp` | Drag/resize now emits `captureRectChangeRequested`; AppController applies it (clamped) via `onRegionChanged`. No more direct `setGeometry()`/`move()` from the view. |
+| ControlBar inline CSS | `resources/controlbar.qss` (new) | ~8 per-widget stylesheets moved into a scoped resource with objectName selectors. |
+| Backend split-construction unenforced | `capture/screencaptureworker.cpp` | Added `Q_ASSERT` main-thread (construction) and worker-thread (start/stop) guards. |
+| GIF "blue whites" (pre-existing) | `encoding/gifencoder.cpp` | Qt's fixed Indexed8 cube puts pure white at index 215; the palette-budget step kept the *first* N table entries and remapped white → cyan. Now keeps the N **most-used** colors by histogram (white dominates screen content, so it survives) and threshold-maps flats. Verified white is retained at a 128-color budget. |
 
 ---
 
-## Still open
+## Still open / deferred
 
-### 1. AppController is a God Class **[OPEN]**
-`appcontroller.{hpp,cpp}` (~1000 lines) still owns UI windows, worker/thread lifecycle, strategy wiring, state transitions, settings, resize math, follow-mouse timer, and hotkeys. Recommended: extract a **`WorkerManager`** (owns `QThread` + `RecorderWorker` + `RecordingStrategy`, incl. the `m_frameConn` disconnect-before-`deleteLater`). Largest change; needs an interactive record→encode→preview verification pass. A dedicated `AppStateMachine` type stays deferred.
-
-### 2. ControlBar mutates CaptureWindow directly **[OPEN — partially fixed]**
-The programmatic round-trip is now `QSignalBlocker`-guarded (see Fixed), and demo-mode already routes through a signal. Remaining: `ControlBar::mouseMoveEvent` calls `m_captureWindow->setGeometry()` / `move()` directly (drag-resize logic in the view). Route through an intent signal to AppController. Needs interactive drag verification.
-
-### 3. ControlBar inline stylesheets **[OPEN]**
-~8 per-widget `setStyleSheet(...)` blocks. Moving them to `:/styles/controlbar.qss` needs objectName selectors and changes Qt's stylesheet cascade, so it wants a visual check on the running app. (The stale "250-line stylesheet" from prior audits no longer applies — it's ~40 lines.)
-
-### 4. Backend split-construction unenforced **[OPEN]**
-`capture/screencaptureworker.cpp` constructs the backend partly on the main thread and partly on the worker thread, enforced only by comments. Add `Q_ASSERT(QThread::currentThread() == …)` in both sections.
-
-### 5. UI constants per-file **[DEFERRED]**
+### 1. UI constants per-file **[DEFERRED]**
 `kBarHeight`/`kBarMargin` (ControlBar file-statics), `kGripSize` (ControlBar class-static), `kBorderWidth`/`kMinDimension` (CaptureWindow class-statics). These are already reasonably scoped; a shared `constants.hpp` would couple unrelated widgets. Low/negative value — intentionally not done.
 
-### 6. State-machine validation scattered **[DEFERRED]**
-Per-slot `if (m_state != X) return;` guards. A `transition(from,to,fn)` helper is a nice-to-have; do it with the `WorkerManager` split.
+### 2. State-machine validation scattered **[DEFERRED]**
+Per-slot `if (m_state != X) return;` guards. A `transition(from,to,fn)` helper is a nice-to-have; not urgent now that the `WorkerManager` split has landed.
 
-### 7. Serial permission requests **[DEFERRED — deliberate]**
+### 3. `lockedAspect()` encapsulation leak **[DEFERRED]**
+`CaptureWindow::lockedAspect()` is public and read by `ControlBar` during grip resize. Minor; would fold naturally into a future state/aspect owner.
+
+### 4. Serial permission requests **[DEFERRED — deliberate]**
 Accessibility is skipped when screen recording is denied. **Not a bug**: macOS shows one TCC dialog at a time and `CGRequestScreenCaptureAccess()` is async, so firing both hides the accessibility dialog. Documented in code + `CLAUDE.md`.
 
 ---

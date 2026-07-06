@@ -35,6 +35,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Multimedia MultimediaW
 set(SOURCES
     src/main.cpp
     src/appcontroller.cpp
+    src/workermanager.cpp
     src/audioengine.cpp
     src/previewstore.cpp
     src/recorderworker.cpp
@@ -83,6 +84,7 @@ list(APPEND SOURCES resources/resources.qrc)
 
 set(HEADERS
     src/appcontroller.hpp
+    src/workermanager.hpp
     src/audioengine.hpp
     src/previewstore.hpp
     src/recorderworker.hpp

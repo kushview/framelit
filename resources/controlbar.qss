@@ -1,0 +1,83 @@
+/* ControlBar — scoped stylesheet (applied to the bar widget, cascades to children).
+   Ghost/toggle buttons set an explicit background in every state so the generic
+   solid-button rules below can't bleed through on hover. */
+
+QWidget {
+    background-color: #1e2029;
+    color: #e2e8f0;
+}
+
+/* Solid action buttons (Record / Pause / Stop). */
+QPushButton {
+    padding: 2px 10px;
+    border-radius: 3px;
+    background-color: #334155;
+    color: #e2e8f0;
+}
+QPushButton:hover { background-color: #475569; }
+
+QPushButton#recordBtn { background-color: #dc2626; }
+QPushButton#recordBtn:hover { background-color: #ef4444; }
+
+/* Ghost / toggle buttons — transparent with a subtle border. */
+QPushButton#formatBtn,
+QPushButton#audioBtn,
+QPushButton#hiDpiBtn,
+QPushButton#followBtn,
+QPushButton#snapBtn,
+QPushButton#previewBtn,
+QPushButton#settingsBtn {
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 3px;
+    color: #94a3b8;
+}
+
+QPushButton#formatBtn  { padding: 2px 8px; }
+QPushButton#audioBtn   { padding: 2px 6px; color: #64748b; }
+QPushButton#hiDpiBtn   { padding: 2px 6px; font-size: 11px; }
+QPushButton#followBtn  { padding: 2px 6px; font-size: 11px; }
+QPushButton#snapBtn    { padding: 2px 6px; font-size: 11px; }
+QPushButton#previewBtn { padding: 0; font-size: 12px; }
+QPushButton#settingsBtn { font-size: 13px; }
+
+/* Hover: keep transparent background, brighten border/text. */
+QPushButton#formatBtn:hover,
+QPushButton#snapBtn:hover,
+QPushButton#settingsBtn:hover {
+    background: transparent;
+    border-color: #64748b;
+    color: #e2e8f0;
+}
+QPushButton#audioBtn:hover,
+QPushButton#hiDpiBtn:hover,
+QPushButton#followBtn:hover,
+QPushButton#previewBtn:hover {
+    background: transparent;
+    border-color: #64748b;
+}
+
+/* Checked (toggle on). */
+QPushButton#audioBtn:checked,
+QPushButton#hiDpiBtn:checked,
+QPushButton#followBtn:checked {
+    color: #e2e8f0;
+    border-color: #60a5fa;
+}
+QPushButton#previewBtn:checked {
+    color: #e2e8f0;
+    border-color: #60a5fa;
+    background: #1e293b;
+}
+
+/* Disabled. */
+QPushButton#snapBtn:disabled,
+QPushButton#settingsBtn:disabled {
+    color: #475569;
+}
+
+/* Resize grip glyph at the right edge (font-size ~ kBarHeight - 10). */
+QLabel#gripLabel {
+    color: #475569;
+    font-size: 26px;
+}

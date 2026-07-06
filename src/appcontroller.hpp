@@ -148,8 +148,7 @@ class CloseButton;
 class ControlBar;
 class EditWindow;
 class MainMenu;
-class RecorderWorker;
-class RecordingStrategy;
+class WorkerManager;
 class SystemTray;
 class Actions;
 
@@ -172,7 +171,6 @@ public slots:
   void onPauseRequested();
   void onResumeRequested();
   void onRegionChanged(const QRect &rect);
-  void onRecordingFinished();
   void onProgressUpdated(qint64 elapsedMs);
   void onCaptureError(const QString &message);
   void onEncodingProgress(float fraction);
@@ -217,10 +215,6 @@ private:
   void loadSettings();
   void saveSettings();
   void applyDemoMode();
-  // Attach a concrete worker: moves it to a dedicated QThread and wires
-  // signals. Takes ownership of both worker and the thread.
-  void attachWorker(RecorderWorker *worker);
-  void teardownWorker();
   void applySettingsToUI();
   void applyResizeDelta(int delta);
   void updateFollowTimer(); // start/stop m_followTimer based on state + flag
@@ -247,11 +241,7 @@ private:
   ControlBar *m_controlBar = nullptr;
   EditWindow *m_editWindow = nullptr;
   MainMenu *m_mainMenu = nullptr;
-  RecorderWorker *m_worker = nullptr;
-  QThread *m_workerThread = nullptr;
-  RecordingStrategy *m_strategy = nullptr; // owned; created per recording
-  QMetaObject::Connection
-      m_frameConn; // frameReady→onFrame; disconnected before strategy teardown
+  WorkerManager *m_workerManager = nullptr; // owns recording worker + strategy
   QTimer *m_followTimer = nullptr;
   SystemTray *m_tray = nullptr;
   Actions *m_actions = nullptr;

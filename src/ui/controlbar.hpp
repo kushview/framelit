@@ -59,6 +59,9 @@ signals:
     void demoModeChangeRequested(bool on);
     void snapAspectRequested();
     void preferencesRequested();
+    // Drag/resize of the capture region via the bar. The controller applies it
+    // (clamping to screen) rather than the bar writing CaptureWindow directly.
+    void captureRectChangeRequested(const QRect& rect);
 
 public slots:
     void onStateChanged(sc::AppState state);
@@ -82,11 +85,10 @@ private:
     // Bar-background drag (moves the whole apparatus)
     bool   m_dragging    = false;
     QPoint m_dragStart;
-    QPoint m_captureOrigin;
 
     // Resize-grip drag (bottom-right corner of the bar)
     bool   m_resizing          = false;
-    QRect  m_captureRectAtPress;
+    QRect  m_captureRectAtPress; // capture-window geometry at mouse-press
 
     static constexpr int kGripSize = 18;  // px square of the resize hit zone
 

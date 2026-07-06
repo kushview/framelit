@@ -2,5 +2,6 @@
 <RCC version="1.0">
     <qresource>
         <file>dark.qss</file>
+        <file>controlbar.qss</file>
     </qresource>
 </RCC>
