@@ -8,7 +8,42 @@
 #include <QUrl>
 #include <QVideoFrame>
 
+#include <cmath>
+
 namespace sc {
+
+namespace {
+
+// Target video bitrate (bits/sec) for average-bitrate (ABR) encoding.
+//
+// We deliberately use ABR with an explicit bitrate rather than Qt's
+// constant-quality path. On macOS the only bundled H.264 encoder is
+// h264_videotoolbox, and in Qt's constant-quality mode VideoToolbox is driven
+// by a fixed qscale that ignores setVideoBitRate() entirely — it under-allocates
+// bits on motion, producing visible compression artifacts. Setting ABR + a
+// generous bitrate is the only in-stack lever that actually raises quality.
+//
+// The heuristic mirrors Qt's own bitrateForSettings(): bits-per-pixel scaled by
+// resolution, then by framerate (doubling fps ~1.5x the data, not 2x, since
+// inter-frame deltas shrink). High maps to Qt's top "VeryHigh" factor.
+int targetVideoBitRate(QSize frameSize, int fps, QualityPreset quality)
+{
+    // bits-per-pixel at 30 fps (matches Qt's H.264/VP8 table columns).
+    double bpp = 1.75; // Medium
+    switch (quality) {
+    case QualityPreset::Low:    bpp = 0.75; break;
+    case QualityPreset::High:   bpp = 16.0;  break;
+    case QualityPreset::Medium:
+    default:                    bpp = 1.75; break;
+    }
+
+    double bitrate = bpp * frameSize.width() * frameSize.height();
+    const double safeFps = fps > 0 ? fps : 30.0;
+    bitrate *= std::pow(1.5, std::log2(safeFps / 30.0));
+    return static_cast<int>(bitrate);
+}
+
+} // namespace
 
 VideoEncoder::VideoEncoder(const RecordingSettings& settings, QObject* parent)
     : QObject(parent)
@@ -75,26 +110,24 @@ bool VideoEncoder::start(const QString& outputPath, QSize frameSize)
     m_recorder.setVideoResolution(frameSize);
     m_recorder.setVideoFrameRate(m_settings.fps);
 
-    // Quality: use CRF-based encoding (quality enum → FFMPEG CRF) rather than
-    // CBR. Setting both quality and bitrate causes Qt's FFMPEG backend to use
-    // CBR and silently ignore the quality hint. CRF produces sharper output
-    // for screen content because it allocates more bits to complex frames and
-    // fewer to static ones.
-    // VeryHighQuality → CRF ~10 for H264 (visually lossless for screen content).
-    // Don't call setVideoBitRate() — let the encoder choose the bitrate.
-    QMediaRecorder::Quality qtQuality;
-    switch (m_settings.quality) {
-    case QualityPreset::Low:    qtQuality = QMediaRecorder::LowQuality;      break;
-    case QualityPreset::High:   qtQuality = QMediaRecorder::VeryHighQuality; break;
-    case QualityPreset::Medium:
-    default:                    qtQuality = QMediaRecorder::HighQuality;     break;
-    }
+    // Quality: use average-bitrate (ABR) encoding with an explicit, resolution-
+    // scaled bitrate. Qt's constant-quality path drives the only bundled macOS
+    // H.264 encoder (h264_videotoolbox) at a fixed qscale that ignores
+    // setVideoBitRate() and under-allocates bits on motion — the source of the
+    // compression artifacts. ABR + a generous bitrate lets VideoToolbox's
+    // hardware rate control hold quality through motion. See targetVideoBitRate().
+    const int videoBitRate = targetVideoBitRate(frameSize, m_settings.fps, m_settings.quality);
+    m_recorder.setEncodingMode(QMediaRecorder::AverageBitRateEncoding);
+    m_recorder.setVideoBitRate(videoBitRate);
 
-    m_recorder.setQuality(qtQuality);
+    // In ABR mode audio is also driven by its bitrate; give AAC/Opus an explicit
+    // rate so it doesn't fall back to the unset (-1) default.
+    if (m_settings.captureAudio)
+        m_recorder.setAudioBitRate(128000);
 
-    qDebug("[VideoEncoder] start: %dx%d @ %dfps  quality=%d (CRF mode)",
+    qDebug("[VideoEncoder] start: %dx%d @ %dfps  quality=%d  videoBitRate=%d bps (ABR)",
            frameSize.width(), frameSize.height(), m_settings.fps,
-           static_cast<int>(qtQuality));
+           static_cast<int>(m_settings.quality), videoBitRate);
 
     m_elapsed.start();
     m_recorder.record();
